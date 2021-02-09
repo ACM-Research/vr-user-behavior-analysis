@@ -1,4 +1,4 @@
-# vr-user-behavior-analyis
+# vr-user-behavior-analysis
 Exploring user behavior in Virtual Reality through heat map visualization and behavior classification
 
 ## Repository Structure
