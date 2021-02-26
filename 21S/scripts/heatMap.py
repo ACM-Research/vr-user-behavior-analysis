@@ -63,18 +63,21 @@ class DataParser:
             x, y = self.convvec2angl(arr)
             x = ((x+180)/360) * self.imagesize[0]
             y = ((90-y)/180) * self.imagesize[1]
+            print(f"{x}, {y}")
             x_index = int(x / colwidth)
             y_index = int(y / rowheight)
             self.usertraces.append((userid, frame, (x_index, y_index)))
                 
     def generateHeatMap(self):
-        frame = 931
+        fig, ax = plt.subplots(figsize=(12,6))
+        ax.axis('off')
+        frame = 1291
         self.convertusertraces(frame)
         print(self.usertraces)
         heatMapArr = np.zeros((3, 6))
         for usertrace in self.usertraces:
             indices = usertrace[2]
-            heatMapArr[indices[0]][indices[1]] += 1
+            heatMapArr[indices[1]][indices[0]] += 1
         sb.heatmap(heatMapArr)
         plt.savefig('heatmap.png')
         
