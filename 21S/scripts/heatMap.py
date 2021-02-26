@@ -9,11 +9,15 @@ import pandas as pd
 from PIL import Image
 import seaborn as sb
 
+import cv2
+
 class DataParser:
 
-    def __init__(self, basedir):
-        self.usertracepath = f"{basedir}/Data/UserTracesByVideo/23/"
-        self.frameimgs = f"{basedir}/Data/VideosData/Videos/SourceFrames/23/"
+    def __init__(self, basedir, videoId, rows, cols):
+        self.rows = rows
+        self.cols = cols
+        self.usertracepath = f"{basedir}/Data/UserTracesByVideo/{videoId}/"
+        self.frameimgs = f"{basedir}/Data/VideosData/Videos/SourceFrames/{videoId}/"
         with Image.open(f"{self.frameimgs}/frame1.jpg") as im:
             self.imagesize = (im.size[0], im.size[1])
         self.importusertraces()
@@ -54,8 +58,8 @@ class DataParser:
         # draw user trace points
         self.usertraces = []
         # frameList = self.frameList()
-        colwidth = self.imagesize[0] / 6 # this can be changed
-        rowheight = self.imagesize[1] / 3
+        colwidth = self.imagesize[0] / self.cols # this can be changed
+        rowheight = self.imagesize[1] / self.rows
         for trace_rows, userid in self.all_user_traces:
             
             trace_row = trace_rows[frame - 1]  # Be careful about indexing!!
@@ -63,28 +67,44 @@ class DataParser:
             x, y = self.convvec2angl(arr)
             x = ((x+180)/360) * self.imagesize[0]
             y = ((90-y)/180) * self.imagesize[1]
-            print(f"{x}, {y}")
             x_index = int(x / colwidth)
             y_index = int(y / rowheight)
             self.usertraces.append((userid, frame, (x_index, y_index)))
                 
-    def generateHeatMap(self):
+    def generateHeatMap(self, frameId):
         fig, ax = plt.subplots(figsize=(12,6))
         ax.axis('off')
-        frame = 1291
-        self.convertusertraces(frame)
-        print(self.usertraces)
-        heatMapArr = np.zeros((3, 6))
+        self.convertusertraces(frameId)
+        heatMapArr = np.zeros((self.rows, self.cols))
         for usertrace in self.usertraces:
             indices = usertrace[2]
             heatMapArr[indices[1]][indices[0]] += 1
         sb.heatmap(heatMapArr)
-        plt.savefig('heatmap.png')
+        plt.savefig('heatmap.jpg')
+        plt.close()
         
+    #Takes approximately 30 seconds on video 23 or 24
+    def createHeatMapVideo(self, fps):
+        self.generateHeatMap(1)
+        img = cv2.imread('heatmap.jpg')
+        height, width, layers = img.shape
+        size = (width, height) #Size of heatmap image
+        out = cv2.VideoWriter('heatmapVideo.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        numofframes = len(self.frameList())
+        progress = 0
+        for frame in self.frameList():
+            self.generateHeatMap(frame)
+            img = cv2.imread('heatmap.jpg')
+            out.write(img)
+            progress += (100 / numofframes)
+            print("Progress " + str(int(progress)) + "%")
+        out.release()
+
 
 def main():
-    data = DataParser('D:/Projects/vr-user-behavior-analysis/')
-    data.generateHeatMap()
+    filepath = os.getcwd()
+    data = DataParser(filepath, videoId=24, rows=10, cols=20)
+    data.createHeatMapVideo(fps=10)
 
 if __name__ == "__main__":
     main()
