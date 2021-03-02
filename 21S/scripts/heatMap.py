@@ -14,7 +14,6 @@ import cv2
 class DataParser:
 
     def __init__(self, basedir, videoId, rows, cols):
-        self.heatMapArrs = []
         self.rows = rows
         self.cols = cols
         self.usertracepath = f"{basedir}/Data/UserTracesByVideo/{videoId}/"
@@ -72,31 +71,50 @@ class DataParser:
             y_index = int(y / rowheight)
             self.usertraces.append((userid, frame, (x_index, y_index)))
                 
+    # function to create an array of all necessary heat map frames; allows for scalable max look value
+    def generateHeatMapArrs(self):
+        heatMapArrays = []
+        for frame in self.frameList():
+            self.convertusertraces(frame)
+            heatMapArr = np.zeros((self.rows, self.cols))
+            for usertrace in self.usertraces:
+                indices = usertrace[2]
+                heatMapArr[indices[1]][indices[0]] += 1
+            heatMapArrays.append(heatMapArr)
+        return heatMapArrays
 
-
-    def generateHeatMap(self, frameId):
-        fig, ax = plt.subplots(figsize=(12,6))
-        ax.axis('off')
-        self.convertusertraces(frameId)
-        heatMapArr = np.zeros((self.rows, self.cols))
-        for usertrace in self.usertraces:
-            indices = usertrace[2]
-            heatMapArr[indices[1]][indices[0]] += 1
-        sb.heatmap(heatMapArr, vmin=0, vmax=15)
-        plt.savefig('heatmap.jpg')
-        plt.close()
+    # NOTE: deprecated function that creates a single heatmap img; max look value not scalable
+    # def generateHeatMap(self, frameId):
+    #     fig, ax = plt.subplots(figsize=(12,6))
+    #     ax.axis('off')
+    #     self.convertusertraces(frameId)
+    #     heatMapArr = np.zeros((self.rows, self.cols))
+    #     for usertrace in self.usertraces:
+    #         indices = usertrace[2]
+    #         heatMapArr[indices[1]][indices[0]] += 1
+    #     sb.heatmap(heatMapArr, vmin=0, vmax=15)
+    #     plt.savefig('heatmap.jpg')
+    #     plt.close()
         
     #Takes approximately 30 seconds on video 23 or 24
     def createHeatMapVideo(self, fps):
-        self.generateHeatMap(1)
+        heatMapArrays = self.generateHeatMapArrs()
+        max_looks = max([np.amax(arr) for arr in heatMapArrays])
+        # print(max_looks)
+        # self.generateHeatMap(1)
+        sb.heatmap(heatMapArrays[0], vmin=0, vmax=max_looks)
+        plt.savefig('heatmap.jpg')
+        plt.close()
         img = cv2.imread('heatmap.jpg')
         height, width, layers = img.shape
         size = (width, height) #Size of heatmap image
         out = cv2.VideoWriter('heatmapVideo.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
         numofframes = len(self.frameList())
         progress = 0
-        for frame in self.frameList():
-            self.generateHeatMap(frame)
+        for map in heatMapArrays:
+            sb.heatmap(map, vmin=0, vmax=max_looks)
+            plt.savefig('heatmap.jpg')
+            plt.close()
             img = cv2.imread('heatmap.jpg')
             out.write(img)
             progress += (100 / numofframes)
