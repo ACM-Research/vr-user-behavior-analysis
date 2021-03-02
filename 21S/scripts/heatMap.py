@@ -14,6 +14,7 @@ import cv2
 class DataParser:
 
     def __init__(self, basedir, videoId, rows, cols):
+        self.heatMapArrs = []
         self.rows = rows
         self.cols = cols
         self.usertracepath = f"{basedir}/Data/UserTracesByVideo/{videoId}/"
@@ -71,6 +72,8 @@ class DataParser:
             y_index = int(y / rowheight)
             self.usertraces.append((userid, frame, (x_index, y_index)))
                 
+
+
     def generateHeatMap(self, frameId):
         fig, ax = plt.subplots(figsize=(12,6))
         ax.axis('off')
@@ -79,7 +82,7 @@ class DataParser:
         for usertrace in self.usertraces:
             indices = usertrace[2]
             heatMapArr[indices[1]][indices[0]] += 1
-        sb.heatmap(heatMapArr)
+        sb.heatmap(heatMapArr, vmin=0, vmax=15)
         plt.savefig('heatmap.jpg')
         plt.close()
         
