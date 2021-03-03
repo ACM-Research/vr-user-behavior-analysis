@@ -137,7 +137,7 @@ class DataParser:
             img = cv2.imread('heatmap.jpg')
             out.write(img)
             progress += (100 / numofframes)
-            print("Progress " + str(int(progress)) + "%")
+            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         out.release()
 
 
