@@ -10,6 +10,7 @@ from PIL import Image
 import seaborn as sb
 
 import cv2
+import math
 
 class DataParser:
 
@@ -36,6 +37,18 @@ class DataParser:
         phi = math.degrees(math.asin(vector[1]))
         theta = math.degrees(math.atan2(vector[0], vector[2]))
         return theta, phi
+
+    @staticmethod
+    def scalingVoteFunction(radius):
+        scaleArr = np.zeros((2*radius+1, 2*radius+1))
+        for x in range(-radius, radius + 1):
+            for y in range(-radius, radius + 1):
+                distFromCircle = (radius * radius) - ((x*x) + (y*y))
+                if distFromCircle < 0:
+                    scaleArr[x + radius][y + radius] = 0
+                else:
+                    scaleArr[x + radius][y + radius] = math.sqrt(distFromCircle)
+        return scaleArr
 
     def importusertraces(self):
         """Note that this parser is very simple in nature and doesn't really *need*
@@ -76,10 +89,16 @@ class DataParser:
         heatMapArrays = []
         for frame in self.frameList():
             self.convertusertraces(frame)
+            radius = 5
+            scaleArr = self.scalingVoteFunction(radius)
             heatMapArr = np.zeros((self.rows, self.cols))
             for usertrace in self.usertraces:
-                indices = usertrace[2]
-                heatMapArr[indices[1]][indices[0]] += 1
+                center = usertrace[2]
+                centerX, centerY = center
+                for x in range(-radius, radius + 1):
+                    for y in range(-radius, radius + 1):
+                        if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
+                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + radius][x + radius]
             heatMapArrays.append(heatMapArr)
         return heatMapArrays
 
@@ -124,8 +143,8 @@ class DataParser:
 
 def main():
     filepath = os.getcwd()
-    data = DataParser(filepath, videoId=24, rows=10, cols=20)
-    data.createHeatMapVideo(fps=10)
+    data = DataParser(filepath, videoId=24, rows=50, cols=100)
+    data.createHeatMapVideo(fps=1)
 
 if __name__ == "__main__":
     main()
