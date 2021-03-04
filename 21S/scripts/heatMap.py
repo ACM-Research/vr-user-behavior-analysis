@@ -50,6 +50,11 @@ class DataParser:
                     scaleArr[x + radius][y + radius] = math.sqrt(distFromCircle)
         return scaleArr
 
+    def getFrame(self, id):
+        frameName = 'frame{}.jpg'.format(id)
+        img = cv2.imread(os.path.join(self.frameimgs, frameName))
+        return img
+
     def importusertraces(self):
         """Note that this parser is very simple in nature and doesn't really *need*
         a separate class."""
@@ -116,35 +121,51 @@ class DataParser:
     #     plt.close()
         
     #Takes approximately 30 seconds on video 23 or 24
-    def createHeatMapVideo(self, fps):
+    def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False):
+        print("Creating {} video".format(videoName))
         heatMapArrays = self.generateHeatMapArrs()
         max_looks = max([np.amax(arr) for arr in heatMapArrays])
-        # print(max_looks)
-        # self.generateHeatMap(1)
-        sb.heatmap(heatMapArrays[0], vmin=0, vmax=max_looks)
-        plt.savefig('heatmap.jpg')
-        plt.close()
-        img = cv2.imread('heatmap.jpg')
-        height, width, layers = img.shape
-        size = (width, height) #Size of heatmap image
-        out = cv2.VideoWriter('heatmapVideo.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
-        numofframes = len(self.frameList())
-        progress = 0
-        for map in heatMapArrays:
-            sb.heatmap(map, vmin=0, vmax=max_looks)
-            plt.savefig('heatmap.jpg')
+        if videoOverlay:
+            out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
+        else:
+            ax = sb.heatmap(heatMapArrays[0], vmin=0, vmax=max_looks, cbar=False)
+            ax.axis('off')
+            plt.savefig('heatmap.jpg', bbox_inches="tight", pad_inches=0)
             plt.close()
             img = cv2.imread('heatmap.jpg')
-            out.write(img)
+            height, width, layers = img.shape
+            size = (width, height) #Size of heatmap image
+            out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        numofframes = len(self.frameList())
+        progress = 0
+        frameId = 1
+        for map in heatMapArrays:
+            ax = sb.heatmap(map, vmin=0, vmax=max_looks, cbar=False)
+            ax.axis('off')
+            plt.savefig('heatmap.jpg', bbox_inches="tight", pad_inches=0)
+            plt.close()
+            heatMap = cv2.imread('heatmap.jpg')
+            if videoOverlay:
+                resizedHeatMap = cv2.resize(heatMap, self.imagesize)
+                frameImg = self.getFrame(frameId)
+                greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
+                cv2.imwrite('grey.jpg', greyImg)
+                greyImg = cv2.imread('grey.jpg') 
+                fullImg = cv2.addWeighted(resizedHeatMap, 3, greyImg, 1, 0)
+                out.write(fullImg)
+                frameId += 30
+            else:
+                out.write(heatMap)
             progress += (100 / numofframes)
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         out.release()
-
+        print()
 
 def main():
     filepath = os.getcwd()
-    data = DataParser(filepath, videoId=24, rows=50, cols=100)
-    data.createHeatMapVideo(fps=1)
+    data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    data.createHeatMapVideo(fps=2)
+    #data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlap.avi', videoOverlay=True)
 
 if __name__ == "__main__":
     main()
