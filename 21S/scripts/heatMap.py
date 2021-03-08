@@ -151,7 +151,7 @@ class DataParser:
                 greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
                 cv2.imwrite('grey.jpg', greyImg)
                 greyImg = cv2.imread('grey.jpg') 
-                fullImg = cv2.addWeighted(resizedHeatMap, 0.2, greyImg, 0.8, 0)
+                fullImg = cv2.addWeighted(resizedHeatMap, 0.9, greyImg, 0.8, 0)
                 out.write(fullImg)
                 frameId += 30
             else:
