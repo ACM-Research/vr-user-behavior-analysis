@@ -39,7 +39,7 @@ class DataParser:
         return theta, phi
 
     @staticmethod
-    def scalingVoteFunction(radius):
+    def scalingVoteFunctionSqrt(radius):
         scaleArr = np.zeros((2*radius+1, 2*radius+1))
         for x in range(-radius, radius + 1):
             for y in range(-radius, radius + 1):
@@ -49,6 +49,44 @@ class DataParser:
                 else:
                     scaleArr[x + radius][y + radius] = math.sqrt(distFromCircle)
         return scaleArr
+
+    @staticmethod
+    def scalingVoteFunctionUniform(radius):
+        scaleArr = np.zeros((2*radius+1, 2*radius+1))
+        for x in range(-radius, radius + 1):
+            for y in range(-radius, radius + 1):
+                distFromCircle = (radius * radius) - ((x*x) + (y*y))
+                if distFromCircle < 0:
+                    scaleArr[x + radius][y + radius] = 0
+                else:
+                    scaleArr[x + radius][y + radius] = 1
+        return scaleArr
+
+    @staticmethod
+    def scalingVoteFunctionLinear(radius):
+        scaleArr = np.zeros((2*radius+1, 2*radius+1))
+        for x in range(-radius, radius + 1):
+            for y in range(-radius, radius + 1):
+                distFromCircle = (radius * radius) - ((x*x) + (y*y))
+                if distFromCircle < 0:
+                    scaleArr[x + radius][y + radius] = 0
+                else:
+                    scaleArr[x + radius][y + radius] = distFromCircle
+        return scaleArr
+
+    @staticmethod
+    def scalingVoteFunctionSquared(radius):
+        scaleArr = np.zeros((2*radius+1, 2*radius+1))
+        for x in range(-radius, radius + 1):
+            for y in range(-radius, radius + 1):
+                distFromCircle = (radius * radius) - ((x*x) + (y*y))
+                if distFromCircle < 0:
+                    scaleArr[x + radius][y + radius] = 0
+                else:
+                    scaleArr[x + radius][y + radius] = distFromCircle * distFromCircle
+        return scaleArr
+
+    #TODO: Create function for determining how accurate the scaling function is (compare to predefined 2d array of values)
 
     def getFrame(self, id):
         frameName = 'frame{}.jpg'.format(id)
@@ -90,12 +128,22 @@ class DataParser:
             self.usertraces.append((userid, frame, (x_index, y_index)))
                 
     # function to create an array of all necessary heat map frames; allows for scalable max look value
-    def generateHeatMapArrs(self):
+    def generateHeatMapArrs(self, scalingFunction = 'sqrt'):
         heatMapArrays = []
+        radius = 5
+        if scalingFunction == 'sqrt':
+            scaleArr = self.scalingVoteFunctionSqrt(radius)
+        elif scalingFunction == 'uniform':
+            scaleArr = self.scalingVoteFunctionUniform(radius)
+        elif scalingFunction == 'linear':
+            scaleArr = self.scalingVoteFunctionLinear(radius)
+        elif scalingFunction == 'squared':
+            scaleArr = self.scalingVoteFunctionSquared(radius)
+        else:
+            print("Unknown scaling function given, using sqrt instead")
+            scaleArr = self.scalingVoteFunctionSqrt(radius)
         for frame in self.frameList():
             self.convertusertraces(frame)
-            radius = 5
-            scaleArr = self.scalingVoteFunction(radius)
             heatMapArr = np.zeros((self.rows, self.cols))
             for usertrace in self.usertraces:
                 center = usertrace[2]
@@ -121,9 +169,9 @@ class DataParser:
     #     plt.close()
         
     #Takes approximately 30 seconds on video 23 or 24
-    def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False):
+    def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'sqrt'):
         print("Creating {} video".format(videoName))
-        heatMapArrays = self.generateHeatMapArrs()
+        heatMapArrays = self.generateHeatMapArrs(scalingFunction)
         max_looks = max([np.amax(arr) for arr in heatMapArrays])
         if videoOverlay:
             out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
@@ -161,11 +209,13 @@ class DataParser:
         out.release()
         print()
 
+#Will need to split up source videos into frames once ML is used
+
 def main():
     filepath = os.getcwd()
     data = DataParser(filepath, videoId=23, rows=50, cols=100)
     #data.createHeatMapVideo(fps=2)
-    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlap.avi', videoOverlay=True)
+    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapLinear.avi', videoOverlay=True, scalingFunction='linear')
 
 if __name__ == "__main__":
     main()
