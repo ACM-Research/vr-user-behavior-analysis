@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
 import seaborn as sb
+from pathlib import Path
 
 import cv2
 import math
@@ -22,6 +23,7 @@ class DataParser:
         with Image.open(f"{self.frameimgs}/frame1.jpg") as im:
             self.imagesize = (im.size[0], im.size[1])
         self.importusertraces()
+        self.testFrames = [121, 271, 691, 811, 1111, 1351, 1681]
 
     def frameList(self):
         framenums = []
@@ -87,6 +89,9 @@ class DataParser:
         return scaleArr
 
     #TODO: Create function for determining how accurate the scaling function is (compare to predefined 2d array of values)
+
+    
+        
 
     def getFrame(self, id):
         frameName = 'frame{}.jpg'.format(id)
@@ -156,17 +161,51 @@ class DataParser:
         return heatMapArrays
 
     # NOTE: deprecated function that creates a single heatmap img; max look value not scalable
-    # def generateHeatMap(self, frameId):
-    #     fig, ax = plt.subplots(figsize=(12,6))
-    #     ax.axis('off')
-    #     self.convertusertraces(frameId)
-    #     heatMapArr = np.zeros((self.rows, self.cols))
-    #     for usertrace in self.usertraces:
-    #         indices = usertrace[2]
-    #         heatMapArr[indices[1]][indices[0]] += 1
-    #     sb.heatmap(heatMapArr, vmin=0, vmax=15)
-    #     plt.savefig('heatmap.jpg')
-    #     plt.close()
+    def generateTestMaps(self, testFrames):
+        fig, ax = plt.subplots(figsize=(12,6))
+        ax.axis('off')
+        dirname = os.getcwd()
+        fileNames = []
+        heatMapArrays = []
+        
+        progress = 0
+        functions = ['sqrt', 'uniform', 'linear', 'squared']
+        numofframes = len(testFrames) * len(functions)
+        for func in functions:
+            Path(f'{dirname}/testFunc/{func}').mkdir(parents=True, exist_ok=True)
+        radius = 5
+        for frame in testFrames:
+            imgName = f'frame{frame}.jpg'
+            for scalingFunction in functions:
+                fileName = f'{dirname}/testFunc/{scalingFunction}/{imgName}'
+                if scalingFunction == 'sqrt':
+                    scaleArr = self.scalingVoteFunctionSqrt(radius)
+                elif scalingFunction == 'uniform':
+                    scaleArr = self.scalingVoteFunctionUniform(radius)
+                elif scalingFunction == 'linear':
+                    scaleArr = self.scalingVoteFunctionLinear(radius)
+                elif scalingFunction == 'squared':
+                    scaleArr = self.scalingVoteFunctionSquared(radius)
+                self.convertusertraces(frame)
+                heatMapArr = np.zeros((self.rows, self.cols))
+                for usertrace in self.usertraces:
+                    center = usertrace[2]
+                    centerX, centerY = center
+                    for x in range(-radius, radius + 1):
+                        for y in range(-radius, radius + 1):
+                            if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
+                                heatMapArr[y + centerY][x + centerX] += scaleArr[y + radius][x + radius]
+                heatMapArrays.append((heatMapArr, fileName))
+        
+        for Map in heatMapArrays:
+            plt.figure(figsize=(16,8),dpi=100)
+            ax = sb.heatmap(Map[0], vmin=0, cbar=False)
+            ax.axis('off')
+            # ax.set_aspect(.5)
+            plt.savefig(Map[1], bbox_inches="tight", pad_inches=0)
+            plt.close()
+            progress += (100 / numofframes)
+            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         
     #Takes approximately 30 seconds on video 23 or 24
     def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'sqrt'):
@@ -217,5 +256,13 @@ def main():
     #data.createHeatMapVideo(fps=2)
     data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapLinear.avi', videoOverlay=True, scalingFunction='linear')
 
+def testScaling():
+    filepath = os.getcwd()
+    data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    data.generateTestMaps(data.testFrames)
+    
+    #data.createHeatMapVideo(fps=2)
+
 if __name__ == "__main__":
-    main()
+    # main()
+    testScaling()
