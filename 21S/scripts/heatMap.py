@@ -41,15 +41,15 @@ class DataParser:
         return theta, phi
 
     @staticmethod
-    def scalingVoteFunctionSqrt(radius):
+    def scalingVoteFunctionSemiCrcl(radius):
         scaleArr = np.zeros((2*radius+1, 2*radius+1))
         for x in range(-radius, radius + 1):
             for y in range(-radius, radius + 1):
-                distFromCircle = (radius * radius) - ((x*x) + (y*y))
-                if distFromCircle < 0:
+                squaredDist = (radius * radius) - ((x*x) + (y*y))
+                if squaredDist < 0:
                     scaleArr[x + radius][y + radius] = 0
                 else:
-                    scaleArr[x + radius][y + radius] = math.sqrt(distFromCircle)
+                    scaleArr[x + radius][y + radius] = (1 / (radius * math.sqrt(3))) * math.sqrt(squaredDist)
         return scaleArr
 
     @staticmethod
@@ -57,8 +57,8 @@ class DataParser:
         scaleArr = np.zeros((2*radius+1, 2*radius+1))
         for x in range(-radius, radius + 1):
             for y in range(-radius, radius + 1):
-                distFromCircle = (radius * radius) - ((x*x) + (y*y))
-                if distFromCircle < 0:
+                squaredDist = (radius * radius) - ((x*x) + (y*y))
+                if squaredDist < 0:
                     scaleArr[x + radius][y + radius] = 0
                 else:
                     scaleArr[x + radius][y + radius] = 1
@@ -69,11 +69,11 @@ class DataParser:
         scaleArr = np.zeros((2*radius+1, 2*radius+1))
         for x in range(-radius, radius + 1):
             for y in range(-radius, radius + 1):
-                distFromCircle = (radius * radius) - ((x*x) + (y*y))
-                if distFromCircle < 0:
+                squaredDist = (radius * radius) - ((x*x) + (y*y))
+                if squaredDist < 0:
                     scaleArr[x + radius][y + radius] = 0
                 else:
-                    scaleArr[x + radius][y + radius] = distFromCircle
+                    scaleArr[x + radius][y + radius] = radius - math.sqrt((x*x) + (y*y))
         return scaleArr
 
     @staticmethod
@@ -81,11 +81,11 @@ class DataParser:
         scaleArr = np.zeros((2*radius+1, 2*radius+1))
         for x in range(-radius, radius + 1):
             for y in range(-radius, radius + 1):
-                distFromCircle = (radius * radius) - ((x*x) + (y*y))
-                if distFromCircle < 0:
+                squaredDist = (radius * radius) - ((x*x) + (y*y))
+                if squaredDist < 0:
                     scaleArr[x + radius][y + radius] = 0
                 else:
-                    scaleArr[x + radius][y + radius] = distFromCircle * distFromCircle
+                    scaleArr[x + radius][y + radius] = (2 / (3 * radius^2)) * squaredDist
         return scaleArr
 
     #TODO: Create function for determining how accurate the scaling function is (compare to predefined 2d array of values)
@@ -137,7 +137,7 @@ class DataParser:
         heatMapArrays = []
         radius = 5
         if scalingFunction == 'sqrt':
-            scaleArr = self.scalingVoteFunctionSqrt(radius)
+            scaleArr = self.scalingVoteFunctionSemiCrcl(radius)
         elif scalingFunction == 'uniform':
             scaleArr = self.scalingVoteFunctionUniform(radius)
         elif scalingFunction == 'linear':
@@ -146,7 +146,7 @@ class DataParser:
             scaleArr = self.scalingVoteFunctionSquared(radius)
         else:
             print("Unknown scaling function given, using sqrt instead")
-            scaleArr = self.scalingVoteFunctionSqrt(radius)
+            scaleArr = self.scalingVoteFunctionSemiCrcl(radius)
         for frame in self.frameList():
             self.convertusertraces(frame)
             heatMapArr = np.zeros((self.rows, self.cols))
@@ -179,7 +179,7 @@ class DataParser:
             for scalingFunction in functions:
                 fileName = f'{dirname}/testFunc/{scalingFunction}/{imgName}'
                 if scalingFunction == 'sqrt':
-                    scaleArr = self.scalingVoteFunctionSqrt(radius)
+                    scaleArr = self.scalingVoteFunctionSemiCrcl(radius)
                 elif scalingFunction == 'uniform':
                     scaleArr = self.scalingVoteFunctionUniform(radius)
                 elif scalingFunction == 'linear':
