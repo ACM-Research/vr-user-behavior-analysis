@@ -19,7 +19,7 @@ def scalingVoteFunctionLinear(a, b):
         for y in range(-b, b + 1):
             # theta = 0
             if x == 0 and y == 0:
-                scaleArr[b][a] = 5
+                scaleArr[b][a] = (a+b)/2
             else:
                 theta = math.atan2(y, x)
                 ellipseRadius = (a * b) / math.sqrt((a**2) * math.sin(theta) ** 2 + (b ** 2) * math.cos(theta) ** 2)
@@ -138,29 +138,29 @@ class DataParser:
     # function to create an array of all necessary heat map frames; allows for scalable max look value
     def generateHeatMapArrs(self, scalingFunction = 'semiCrcl'):
         heatMapArrays = []
-        horizontalAxis = int(114 * (self.cols / 360))
-        verticalAxis = int(57 * (self.rows / 180))
+        semiHorizontalAxis = int(114 * (self.cols / 360))
+        semiVerticalAxis = int(57 * (self.rows / 180))
         if scalingFunction == 'semiCrcl':
-            scaleArr = scalingVoteFunctionSemiCrcl(horizontalAxis, verticalAxis)
+            scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
         elif scalingFunction == 'sqrt':
-            scaleArr = scalingVoteFunctionSqrt(horizontalAxis, verticalAxis)
+            scaleArr = scalingVoteFunctionSqrt(semiHorizontalAxis, semiVerticalAxis)
         elif scalingFunction == 'uniform':
-            scaleArr = scalingVoteFunctionUniform(horizontalAxis, verticalAxis)
+            scaleArr = scalingVoteFunctionUniform(semiHorizontalAxis, semiVerticalAxis)
         elif scalingFunction == 'linear':
-            scaleArr = scalingVoteFunctionLinear(horizontalAxis, verticalAxis)
+            scaleArr = scalingVoteFunctionLinear(semiHorizontalAxis, semiVerticalAxis)
         elif scalingFunction == 'squared':
-            scaleArr = scalingVoteFunctionSquared(horizontalAxis, verticalAxis)
+            scaleArr = scalingVoteFunctionSquared(semiHorizontalAxis, semiVerticalAxis)
         else:
             print("Unknown scaling function given, using semi-circle instead")
-            scaleArr = scalingVoteFunctionSemiCrcl(horizontalAxis, verticalAxis)
+            scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
         for frame in self.frameList():
             self.convertusertraces(frame)
             heatMapArr = np.zeros((self.rows, self.cols))
             for usertrace in self.usertraces:
                 center = usertrace[2]
                 centerX, centerY = center
-                for x in range(-horizontalAxis, horizontalAxis + 1):
-                    for y in range(-verticalAxis, verticalAxis + 1):
+                for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
+                    for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
                         if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
                             heatMapArr[y + centerY][x + centerX] += scaleArr[y + b][x + a]
             heatMapArrays.append(heatMapArr)
@@ -173,8 +173,8 @@ class DataParser:
         dirname = os.getcwd()
         fileNames = []
         heatMapArrays = []
-        horizontalAxis = int(114 * (self.cols / 360))
-        verticalAxis = int(57 * (self.rows / 180))
+        semiHorizontalAxis = int(114 * (self.cols / 360) / 2)
+        semiVerticalAxis = int(57 * (self.rows / 180) / 2)
         progress = 0
         functions = ['semiCrcl', 'sqrt', 'uniform', 'linear', 'squared']
         numofframes = len(testFrames) * len(functions)
@@ -186,24 +186,24 @@ class DataParser:
             for scalingFunction in functions:
                 fileName = f'{dirname}/testFunc/{scalingFunction}/{imgName}'
                 if scalingFunction == 'semiCrcl':
-                    scaleArr = scalingVoteFunctionSemiCrcl(horizontalAxis, verticalAxis)
+                    scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
                 elif scalingFunction == 'sqrt':
-                    scaleArr = scalingVoteFunctionSqrt(horizontalAxis, verticalAxis)
+                    scaleArr = scalingVoteFunctionSqrt(semiHorizontalAxis, semiVerticalAxis)
                 elif scalingFunction == 'uniform':
-                    scaleArr = scalingVoteFunctionUniform(horizontalAxis, verticalAxis)
+                    scaleArr = scalingVoteFunctionUniform(semiHorizontalAxis, semiVerticalAxis)
                 elif scalingFunction == 'linear':
-                    scaleArr = scalingVoteFunctionLinear(horizontalAxis, verticalAxis)
+                    scaleArr = scalingVoteFunctionLinear(semiHorizontalAxis, semiVerticalAxis)
                 elif scalingFunction == 'squared':
-                    scaleArr = scalingVoteFunctionSquared(horizontalAxis, verticalAxis)
+                    scaleArr = scalingVoteFunctionSquared(semiHorizontalAxis, semiVerticalAxis)
                 self.convertusertraces(frame)
                 heatMapArr = np.zeros((self.rows, self.cols))
                 for usertrace in self.usertraces:
                     center = usertrace[2]
                     centerX, centerY = center
-                    for x in range(-horizontalAxis, horizontalAxis + 1):
-                        for y in range(-verticalAxis, verticalAxis + 1):
+                    for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
+                        for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
                             if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
-                                heatMapArr[y + centerY][x + centerX] += scaleArr[y + verticalAxis][x + horizontalAxis]
+                                heatMapArr[y + centerY][x + centerX] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
                 heatMapArrays.append((heatMapArr, fileName))
         
         for Map in heatMapArrays:
