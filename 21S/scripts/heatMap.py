@@ -13,6 +13,57 @@ from pathlib import Path
 import cv2
 import math
 
+def scalingVoteFunctionLinear(a, b):
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            # theta = 0
+            if x == 0 and y == 0:
+                scaleArr[b][a] = 5
+            else:
+                theta = math.atan2(y, x)
+                ellipseRadius = (a * b) / math.sqrt((a**2) * math.sin(theta) ** 2 + (b ** 2) * math.cos(theta) ** 2)
+                radius = math.sqrt(x ** 2 + y ** 2)
+                dist = ((a+b)/2) * ((ellipseRadius - radius) / ellipseRadius) #Max value of linear function
+                if dist < 0:
+                    scaleArr[y + b][x + a] = 0
+                else:
+                    scaleArr[y + b][x + a] = dist
+    return scaleArr
+
+def scalingVoteFunctionSqrt(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            scaleArr[y+b][x+a] = math.sqrt(linearArr[y+b][x+a])
+    return scaleArr
+
+def scalingVoteFunctionSemiCrcl(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            scaleArr[y+b][x+a] = (a+b / 2) - math.sqrt((a+b / 2) ** 2 - linearArr[y+b][x+a] ** 2)
+    return scaleArr
+
+def scalingVoteFunctionUniform(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            if linearArr[y+b][x+a] > 0.1:
+                scaleArr[y+b][x+a] = 1
+    return scaleArr
+
+def scalingVoteFunctionSquared(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            scaleArr[y+b][x+a] = linearArr[y+b][x+a] ** 2
+    return scaleArr
+
 class DataParser:
 
     def __init__(self, basedir, videoId, rows, cols):
@@ -39,82 +90,6 @@ class DataParser:
         phi = math.degrees(math.asin(vector[1]))
         theta = math.degrees(math.atan2(vector[0], vector[2]))
         return theta, phi
-
-    def scalingVoteFunctionSqrt(radius):
-        scaleArr = np.zeros((2*radius+1, 2*radius+1))
-        for x in range(-radius, radius + 1):
-            for y in range(-radius, radius + 1):
-                squaredDist = (radius * radius) - ((x*x) + (y*y))
-                if squaredDist < 0:
-                    scaleArr[x + radius][y + radius] = 0
-                else:
-                    scaleArr[x + radius][y + radius] = math.sqrt(radius) - math.sqrt(math.sqrt(x*x + y*y))
-        return scaleArr
-
-    # @staticmethod
-    # def scalingVoteFunctionSemiCrcl(radius):
-    #     scaleArr = np.zeros((2*radius+1, 2*radius+1))
-    #     for x in range(-radius, radius + 1):
-    #         for y in range(-radius, radius + 1):
-    #             squaredDist = (radius * radius) - ((x*x) + (y*y))
-    #             if squaredDist < 0:
-    #                 scaleArr[x + radius][y + radius] = 0
-    #             else:
-    #                 scaleArr[x + radius][y + radius] = math.sqrt(squaredDist)
-    #     return scaleArr
-
-    # a: semi-a axis (horizontal)
-    # b: semi-b axis (vertical)
-    @staticmethod
-    def scalingVoteFunctionSemiCrcl(a, b):
-        scaleArr = np.zeros((2*b+1, 2*a+1))
-        for x in range(-a, a + 1):
-            for y in range(-b, b + 1):
-                # theta = 0
-                theta = math.atan2(y, x)
-                radius = (a*b) / math.sqrt(a*a * (math.sin(theta))**2 + b*b * (math.cos(theta))**2)
-                squaredDist = (a**2 + b**2)/radius - ((x*x) + (y*y))
-                if squaredDist < 0:
-                    scaleArr[y + b][x + a] = 0
-                else:
-                    scaleArr[y + b][x + a] = math.sqrt(squaredDist)
-        return scaleArr
-
-    @staticmethod
-    def scalingVoteFunctionUniform(radius):
-        scaleArr = np.zeros((2*radius+1, 2*radius+1))
-        for x in range(-radius, radius + 1):
-            for y in range(-radius, radius + 1):
-                squaredDist = (radius * radius) - ((x*x) + (y*y))
-                if squaredDist < 0:
-                    scaleArr[x + radius][y + radius] = 0
-                else:
-                    scaleArr[x + radius][y + radius] = 1
-        return scaleArr
-
-    @staticmethod
-    def scalingVoteFunctionLinear(radius):
-        scaleArr = np.zeros((2*radius+1, 2*radius+1))
-        for x in range(-radius, radius + 1):
-            for y in range(-radius, radius + 1):
-                squaredDist = (radius * radius) - ((x*x) + (y*y))
-                if squaredDist < 0:
-                    scaleArr[x + radius][y + radius] = 0
-                else:
-                    scaleArr[x + radius][y + radius] = radius - math.sqrt((x*x) + (y*y))
-        return scaleArr
-
-    @staticmethod
-    def scalingVoteFunctionSquared(radius):
-        scaleArr = np.zeros((2*radius+1, 2*radius+1))
-        for x in range(-radius, radius + 1):
-            for y in range(-radius, radius + 1):
-                squaredDist = (radius * radius) - ((x*x) + (y*y))
-                if squaredDist < 0:
-                    scaleArr[x + radius][y + radius] = 0
-                else:
-                    scaleArr[x + radius][y + radius] = squaredDist
-        return scaleArr
 
     #TODO: Create function for determining how accurate the scaling function is (compare to predefined 2d array of values)
 
@@ -163,28 +138,31 @@ class DataParser:
     # function to create an array of all necessary heat map frames; allows for scalable max look value
     def generateHeatMapArrs(self, scalingFunction = 'semiCrcl'):
         heatMapArrays = []
-        radius = 5
+        horizontalAxis = int(114 * (self.cols / 360))
+        verticalAxis = int(57 * (self.rows / 180))
         if scalingFunction == 'semiCrcl':
-            scaleArr = self.scalingVoteFunctionSemiCrcl(2*radius, radius)
+            scaleArr = scalingVoteFunctionSemiCrcl(horizontalAxis, verticalAxis)
+        elif scalingFunction == 'sqrt':
+            scaleArr = scalingVoteFunctionSqrt(horizontalAxis, verticalAxis)
         elif scalingFunction == 'uniform':
-            scaleArr = self.scalingVoteFunctionUniform(radius)
+            scaleArr = scalingVoteFunctionUniform(horizontalAxis, verticalAxis)
         elif scalingFunction == 'linear':
-            scaleArr = self.scalingVoteFunctionLinear(radius)
+            scaleArr = scalingVoteFunctionLinear(horizontalAxis, verticalAxis)
         elif scalingFunction == 'squared':
-            scaleArr = self.scalingVoteFunctionSquared(radius)
+            scaleArr = scalingVoteFunctionSquared(horizontalAxis, verticalAxis)
         else:
-            print("Unknown scaling function given, using sqrt instead")
-            scaleArr = self.scalingVoteFunctionSemiCrcl(radius)
+            print("Unknown scaling function given, using semi-circle instead")
+            scaleArr = scalingVoteFunctionSemiCrcl(horizontalAxis, verticalAxis)
         for frame in self.frameList():
             self.convertusertraces(frame)
             heatMapArr = np.zeros((self.rows, self.cols))
             for usertrace in self.usertraces:
                 center = usertrace[2]
                 centerX, centerY = center
-                for x in range(-radius, radius + 1):
-                    for y in range(-radius, radius + 1):
+                for x in range(-horizontalAxis, horizontalAxis + 1):
+                    for y in range(-verticalAxis, verticalAxis + 1):
                         if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
-                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + radius][x + radius]
+                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + b][x + a]
             heatMapArrays.append(heatMapArr)
         return heatMapArrays
 
@@ -195,9 +173,10 @@ class DataParser:
         dirname = os.getcwd()
         fileNames = []
         heatMapArrays = []
-        
+        horizontalAxis = int(114 * (self.cols / 360))
+        verticalAxis = int(57 * (self.rows / 180))
         progress = 0
-        functions = ['semiCrcl', 'uniform', 'linear', 'squared']
+        functions = ['semiCrcl', 'sqrt', 'uniform', 'linear', 'squared']
         numofframes = len(testFrames) * len(functions)
         for func in functions:
             Path(f'{dirname}/testFunc/{func}').mkdir(parents=True, exist_ok=True)
@@ -207,26 +186,24 @@ class DataParser:
             for scalingFunction in functions:
                 fileName = f'{dirname}/testFunc/{scalingFunction}/{imgName}'
                 if scalingFunction == 'semiCrcl':
-                    scaleArr = self.scalingVoteFunctionSemiCrcl(2*radius, radius)
-                    # print(np.shape(scaleArr))
-                    # print(scaleArr[10])
-                    # print(np.matrix(scaleArr))
-                # elif scalingFunction == 'uniform':
-                #     scaleArr = self.scalingVoteFunctionUniform(radius)
-                # elif scalingFunction == 'linear':
-                #     scaleArr = self.scalingVoteFunctionLinear(radius)
-                # elif scalingFunction == 'squared':
-                #     scaleArr = self.scalingVoteFunctionSquared(radius)
+                    scaleArr = scalingVoteFunctionSemiCrcl(horizontalAxis, verticalAxis)
+                elif scalingFunction == 'sqrt':
+                    scaleArr = scalingVoteFunctionSqrt(horizontalAxis, verticalAxis)
+                elif scalingFunction == 'uniform':
+                    scaleArr = scalingVoteFunctionUniform(horizontalAxis, verticalAxis)
+                elif scalingFunction == 'linear':
+                    scaleArr = scalingVoteFunctionLinear(horizontalAxis, verticalAxis)
+                elif scalingFunction == 'squared':
+                    scaleArr = scalingVoteFunctionSquared(horizontalAxis, verticalAxis)
                 self.convertusertraces(frame)
                 heatMapArr = np.zeros((self.rows, self.cols))
                 for usertrace in self.usertraces:
                     center = usertrace[2]
                     centerX, centerY = center
-                    for x in range(-2*radius, 2*radius + 1):
-                        for y in range(-radius, radius + 1):
+                    for x in range(-horizontalAxis, horizontalAxis + 1):
+                        for y in range(-verticalAxis, verticalAxis + 1):
                             if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
-                                # print(np.shape(scaleArr))
-                                heatMapArr[y + centerY][x + centerX] += scaleArr[y + radius][x + 2*radius]
+                                heatMapArr[y + centerY][x + centerX] += scaleArr[y + verticalAxis][x + horizontalAxis]
                 heatMapArrays.append((heatMapArr, fileName))
         
         for Map in heatMapArrays:
@@ -240,7 +217,7 @@ class DataParser:
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         
     #Takes approximately 30 seconds on video 23 or 24
-    def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'sqrt'):
+    def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'semiCrcl'):
         print("Creating {} video".format(videoName))
         heatMapArrays = self.generateHeatMapArrs(scalingFunction)
         max_looks = max([np.amax(arr) for arr in heatMapArrays])
@@ -284,13 +261,13 @@ class DataParser:
 
 def main():
     filepath = os.getcwd()
-    data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    data = DataParser(filepath, videoId=23, rows=100, cols=200)
     #data.createHeatMapVideo(fps=2)
     data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapLinear.avi', videoOverlay=True, scalingFunction='linear')
 
 def testScaling():
     filepath = os.getcwd()
-    data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    data = DataParser(filepath, videoId=23, rows=100, cols=200)
     data.generateTestMaps(data.testFrames)
     
     #data.createHeatMapVideo(fps=2)
@@ -298,3 +275,11 @@ def testScaling():
 if __name__ == "__main__":
     # main()
     testScaling()
+    #filepath = os.getcwd()
+    #data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    #data.generateTestMaps(data.testFrames)
+    #scaleArr = data.scalingVoteFunctionSemiCrcl(10, 5)
+    #for a in scaleArr:
+     #   for b in a:
+      #      print(round(b,2), end=' ')
+       # print()
