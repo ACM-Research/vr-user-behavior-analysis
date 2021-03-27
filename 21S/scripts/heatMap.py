@@ -9,6 +9,7 @@ import pandas as pd
 from PIL import Image
 import seaborn as sb
 from pathlib import Path
+import copy as cp
 
 import cv2
 import math
@@ -166,18 +167,39 @@ class DataParser:
                         elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
                             xPos = self.cols + centerX + x
                             heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-                        elif centerX + x > self.cols and centerY + y >= 0 and centerY + y < self.rows:
+                        elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
                             xPos = centerX + x - self.cols
                             heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
             heatMapArrays.append(heatMapArr)
         return heatMapArrays
 
+    def generateResMapArrs(self, heatMapArrs):
+        # max_looks = [np.amax(arr) for arr in heatMapArrs]
+        resMapArrs = []
+        # heatMapsCopy = cp.deepcopy(heatMapArrs)
+        for Map in heatMapArrs:
+            heatMap = Map[0]
+            resMapArray = np.zeros((self.rows, self.cols))
+            max_look = np.amax(heatMap)
+            r = 0
+            for row in heatMap:
+                c = 0
+                for col in row:
+                    val = int(col * 5 / max_look)
+                    if val == 5:
+                        val = 4
+                    resMapArray[r][c] = val
+                    c += 1
+                r +=1
+            resMap = (resMapArray, Map[1].replace('heatMaps', 'resMaps'), Map[2])
+            resMapArrs.append(resMap)
+        return resMapArrs
+
     # NOTE: deprecated function that creates a single heatmap img; max look value not scalable
-    def generateTestMaps(self, testFrames):
+    def generateTestMaps(self, testFrames, videoOverlay=False):
         fig, ax = plt.subplots(figsize=(12,6))
         ax.axis('off')
         dirname = os.getcwd()
-        fileNames = []
         heatMapArrays = []
         semiHorizontalAxis = int(114 * (self.cols / 360) / 2)
         semiVerticalAxis = int(57 * (self.rows / 180) / 2)
@@ -185,12 +207,12 @@ class DataParser:
         functions = ['semiCrcl', 'sqrt', 'uniform', 'linear', 'squared']
         numofframes = len(testFrames) * len(functions)
         for func in functions:
-            Path(f'{dirname}/testFunc/{func}').mkdir(parents=True, exist_ok=True)
-        radius = 5
+            Path(f'{dirname}/testFunc/heatMaps/{func}').mkdir(parents=True, exist_ok=True)
+            Path(f'{dirname}/testFunc/resMaps/{func}').mkdir(parents=True, exist_ok=True)
         for frame in testFrames:
             imgName = f'frame{frame}.jpg'
             for scalingFunction in functions:
-                fileName = f'{dirname}/testFunc/{scalingFunction}/{imgName}'
+                fileName = f'{dirname}/testFunc/heatMaps/{scalingFunction}/{imgName}'
                 if scalingFunction == 'semiCrcl':
                     scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
                 elif scalingFunction == 'sqrt':
@@ -213,17 +235,51 @@ class DataParser:
                             elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
                                 xPos = self.cols + centerX + x
                                 heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-                            elif centerX + x > self.cols and centerY + y >= 0 and centerY + y < self.rows:
+                            elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
                                 xPos = centerX + x - self.cols
                                 heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-                heatMapArrays.append((heatMapArr, fileName))
-        
+                heatMapArrays.append((heatMapArr, fileName, frame))
+        resMapArrs = self.generateResMapArrs(heatMapArrays)
+
+        for Map in resMapArrs:
+            plt.figure(figsize=(16,8),dpi=100)
+            ax = sb.heatmap(Map[0], vmin=0, cbar=False)
+            ax.axis('off')
+            # ax.set_aspect(.5)
+            # print(Map[1])
+            plt.savefig(Map[1], bbox_inches="tight", pad_inches=0)
+            if videoOverlay:
+                heatMap = cv2.imread(Map[1])
+                resizedHeatMap = cv2.resize(heatMap, self.imagesize)
+                frameImg = self.getFrame(Map[2])
+                greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
+                cv2.imwrite('grey.jpg', greyImg)
+                greyImg = cv2.imread('grey.jpg') 
+                fullImg = cv2.addWeighted(resizedHeatMap, 0.95, greyImg, 0.55, 0)
+                cv2.imwrite(Map[1], fullImg)
+            
+                
+            plt.close()
+            progress += (100 / numofframes)
+            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
+
         for Map in heatMapArrays:
             plt.figure(figsize=(16,8),dpi=100)
             ax = sb.heatmap(Map[0], vmin=0, cbar=False)
             ax.axis('off')
             # ax.set_aspect(.5)
             plt.savefig(Map[1], bbox_inches="tight", pad_inches=0)
+            if videoOverlay:
+                heatMap = cv2.imread(Map[1])
+                resizedHeatMap = cv2.resize(heatMap, self.imagesize)
+                frameImg = self.getFrame(Map[2])
+                greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
+                cv2.imwrite('grey.jpg', greyImg)
+                greyImg = cv2.imread('grey.jpg') 
+                fullImg = cv2.addWeighted(resizedHeatMap, 0.95, greyImg, 0.55, 0)
+                cv2.imwrite(Map[1], fullImg)
+            
+                
             plt.close()
             progress += (100 / numofframes)
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
@@ -232,7 +288,6 @@ class DataParser:
     def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'semiCrcl'):
         print("Creating {} video".format(videoName))
         heatMapArrays = self.generateHeatMapArrs(scalingFunction)
-        max_looks = max([np.amax(arr) for arr in heatMapArrays])
         if videoOverlay:
             out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
         else:
@@ -279,14 +334,14 @@ def main():
 
 def testScaling():
     filepath = os.getcwd()
-    data = DataParser(filepath, videoId=23, rows=100, cols=200)
-    data.generateTestMaps(data.testFrames)
+    data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    data.generateTestMaps(data.testFrames, videoOverlay=False)
     
     #data.createHeatMapVideo(fps=2)
 
 if __name__ == "__main__":
-    main()
-    #testScaling()
+    # main()
+    testScaling()
     #filepath = os.getcwd()
     #data = DataParser(filepath, videoId=23, rows=50, cols=100)
     #data.generateTestMaps(data.testFrames)
