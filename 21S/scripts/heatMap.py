@@ -163,6 +163,12 @@ class DataParser:
                     for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
                         if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
                             heatMapArr[y + centerY][x + centerX] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+                        elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
+                            xPos = self.cols + centerX + x
+                            heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+                        elif centerX + x > self.cols and centerY + y >= 0 and centerY + y < self.rows:
+                            xPos = centerX + x - self.cols
+                            heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
             heatMapArrays.append(heatMapArr)
         return heatMapArrays
 
@@ -204,6 +210,12 @@ class DataParser:
                         for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
                             if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
                                 heatMapArr[y + centerY][x + centerX] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+                            elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
+                                xPos = self.cols + centerX + x
+                                heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+                            elif centerX + x > self.cols and centerY + y >= 0 and centerY + y < self.rows:
+                                xPos = centerX + x - self.cols
+                                heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
                 heatMapArrays.append((heatMapArr, fileName))
         
         for Map in heatMapArrays:
@@ -263,7 +275,7 @@ def main():
     filepath = os.getcwd()
     data = DataParser(filepath, videoId=23, rows=100, cols=200)
     #data.createHeatMapVideo(fps=2)
-    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapSqrt.avi', videoOverlay=True, scalingFunction='sqrt')
+    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapUniform.avi', videoOverlay=False, scalingFunction='uniform')
 
 def testScaling():
     filepath = os.getcwd()
