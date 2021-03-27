@@ -138,8 +138,8 @@ class DataParser:
     # function to create an array of all necessary heat map frames; allows for scalable max look value
     def generateHeatMapArrs(self, scalingFunction = 'semiCrcl'):
         heatMapArrays = []
-        semiHorizontalAxis = int(114 * (self.cols / 360))
-        semiVerticalAxis = int(57 * (self.rows / 180))
+        semiHorizontalAxis = int(114 * (self.cols / 360) / 2)
+        semiVerticalAxis = int(57 * (self.rows / 180) / 2)
         if scalingFunction == 'semiCrcl':
             scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
         elif scalingFunction == 'sqrt':
@@ -162,7 +162,7 @@ class DataParser:
                 for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
                     for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
                         if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
-                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + b][x + a]
+                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
             heatMapArrays.append(heatMapArr)
         return heatMapArrays
 
@@ -263,7 +263,7 @@ def main():
     filepath = os.getcwd()
     data = DataParser(filepath, videoId=23, rows=100, cols=200)
     #data.createHeatMapVideo(fps=2)
-    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapLinear.avi', videoOverlay=True, scalingFunction='linear')
+    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapSqrt.avi', videoOverlay=True, scalingFunction='sqrt')
 
 def testScaling():
     filepath = os.getcwd()
@@ -273,8 +273,8 @@ def testScaling():
     #data.createHeatMapVideo(fps=2)
 
 if __name__ == "__main__":
-    # main()
-    testScaling()
+    main()
+    #testScaling()
     #filepath = os.getcwd()
     #data = DataParser(filepath, videoId=23, rows=50, cols=100)
     #data.generateTestMaps(data.testFrames)
