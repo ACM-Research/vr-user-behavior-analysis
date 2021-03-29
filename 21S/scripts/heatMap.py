@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageDraw
 import seaborn as sb
 from pathlib import Path
 import copy as cp
@@ -240,7 +240,7 @@ class DataParser:
                                 heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
                 heatMapArrays.append((heatMapArr, fileName, frame))
         resMapArrs = self.generateResMapArrs(heatMapArrays)
-
+        print("Creating Resolution Maps...")
         for Map in resMapArrs:
             plt.figure(figsize=(16,8),dpi=100)
             ax = sb.heatmap(Map[0], vmin=0, cbar=False)
@@ -258,11 +258,15 @@ class DataParser:
                 fullImg = cv2.addWeighted(resizedHeatMap, 0.95, greyImg, 0.55, 0)
                 cv2.imwrite(Map[1], fullImg)
             
-                
+            if Map[1].find('semiCrcl') != -1:
+                self.splitImage(Map[2], Map[0])
             plt.close()
             progress += (100 / numofframes)
+            
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
-
+        
+        progress = 0
+        print("Creating Heat Maps...")
         for Map in heatMapArrays:
             plt.figure(figsize=(16,8),dpi=100)
             ax = sb.heatmap(Map[0], vmin=0, cbar=False)
@@ -282,6 +286,7 @@ class DataParser:
                 
             plt.close()
             progress += (100 / numofframes)
+            
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         
     #Takes approximately 30 seconds on video 23 or 24
@@ -303,7 +308,7 @@ class DataParser:
         progress = 0
         frameId = 1
         for map in heatMapArrays:
-            ax = sb.heatmap(map, vmin=0, vmax=max_looks, cbar=False)
+            ax = sb.heatmap(map, vmin=0, cbar=False)
             ax.axis('off')
             plt.savefig('heatmap.jpg', bbox_inches="tight", pad_inches=0)
             plt.close()
@@ -323,6 +328,52 @@ class DataParser:
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         out.release()
         print()
+    
+    def splitImage(self, frame, resMap):
+        unitWidth = self.imagesize[0] / self.cols
+        unitHeight = self.imagesize[1] / self.rows
+        frameName = 'frame{}.jpg'.format(frame)
+        dirname = os.getcwd()
+        Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
+        for i in range(0, 5):
+            frameImg = Image.open(os.path.join(self.frameimgs, frameName))
+            # frameImg.save(f'frame{frame}.png')
+            mask = Image.new('L', frameImg.size, color = 255)
+            draw = ImageDraw.Draw(mask)
+            # transp_height = 0
+            
+            y_i = 0
+            for r in resMap:
+                transp_width = 0
+                x_i = 0
+                for c in r:
+                    
+                    if c != i:
+                        transp_width += unitWidth 
+                    else:
+                        transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
+                        # print(transp_area)
+                        if transp_width != 0:
+                            draw.rectangle(transp_area, fill = 0)
+                        x_i += transp_width + unitWidth
+                        transp_width = 0 
+                transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
+                # print(transp_area)
+                if transp_width != 0:
+                    draw.rectangle(transp_area, fill = 0)
+                y_i += unitHeight
+            # draw.rectangle((100, 10, 300, 190), fill = 0)
+            
+            frameImg.putalpha(mask)
+            # print('saving')
+            # im = frameImg.convert('RGB')
+            frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png')
+            # im.save(f'frame{frame}_res_{i}.jpg')
+            
+            # print('complete')
+
+
+
 
 #Will need to split up source videos into frames once ML is used
 
@@ -335,7 +386,9 @@ def main():
 def testScaling():
     filepath = os.getcwd()
     data = DataParser(filepath, videoId=23, rows=50, cols=100)
+    # print(data.imagesize)
     data.generateTestMaps(data.testFrames, videoOverlay=False)
+    
     
     #data.createHeatMapVideo(fps=2)
 
