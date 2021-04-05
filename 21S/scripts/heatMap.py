@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw
 import seaborn as sb
 from pathlib import Path
 import copy as cp
+import time
 
 import cv2
 import math
@@ -197,9 +198,12 @@ class DataParser:
 
     # NOTE: deprecated function that creates a single heatmap img; max look value not scalable
     def generateTestMaps(self, testFrames, videoOverlay=False):
+        
         fig, ax = plt.subplots(figsize=(12,6))
         ax.axis('off')
         dirname = os.getcwd()
+        Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
+        Path(f'{dirname}/testFunc/compressedImgs').mkdir(parents=True, exist_ok=True)
         heatMapArrays = []
         semiHorizontalAxis = int(114 * (self.cols / 360) / 2)
         semiVerticalAxis = int(57 * (self.rows / 180) / 2)
@@ -260,6 +264,16 @@ class DataParser:
             
             if Map[1].find('semiCrcl') != -1:
                 self.splitImage(Map[2], Map[0])
+            fullImgArr = np.zeros_like(self.splitImgs[0])
+            fullImg = Image.fromarray(fullImgArr)
+            for imgArr in self.splitImgs:
+                img = Image.fromarray(imgArr)
+                # print(fullImg.shape, img.shape)
+                # fullImg = cv2.add(fullImg, img)
+                fullImg.paste(img, (0, 0), img)
+            
+            fullImg = fullImg.convert('RGB')
+            fullImg.save(f'{dirname}/testFunc/compressedImgs/frame{Map[2]}.jpg', quality=95)
             plt.close()
             progress += (100 / numofframes)
             
@@ -329,14 +343,23 @@ class DataParser:
         out.release()
         print()
     
+    
     def splitImage(self, frame, resMap):
+        self.splitImgs = []
         unitWidth = self.imagesize[0] / self.cols
         unitHeight = self.imagesize[1] / self.rows
         frameName = 'frame{}.jpg'.format(frame)
         dirname = os.getcwd()
-        Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
+        # Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
         for i in range(0, 5):
             frameImg = Image.open(os.path.join(self.frameimgs, frameName))
+            reduction = 4-i
+            frameImg = frameImg.resize((int(self.imagesize[0] / (2**reduction)), int(self.imagesize[1] / (2**reduction))))
+            frameImg = frameImg.resize(self.imagesize)
+            frameImg.save(f'{dirname}/testFunc/splitImgs/temp.jpg')
+            frameImg = Image.open(os.path.join(f'{dirname}/testFunc/splitImgs/temp.jpg'))
+            # print(f'Res {i}')
+            # time.sleep(3)
             # frameImg.save(f'frame{frame}.png')
             mask = Image.new('L', frameImg.size, color = 255)
             draw = ImageDraw.Draw(mask)
@@ -351,13 +374,13 @@ class DataParser:
                     if c != i:
                         transp_width += unitWidth 
                     else:
-                        transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
+                        transp_area = (x_i, y_i, x_i + transp_width - 1, y_i + unitHeight - 1)
                         # print(transp_area)
                         if transp_width != 0:
                             draw.rectangle(transp_area, fill = 0)
                         x_i += transp_width + unitWidth
                         transp_width = 0 
-                transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
+                transp_area = (x_i, y_i, x_i + transp_width - 1, y_i + unitHeight - 1)
                 # print(transp_area)
                 if transp_width != 0:
                     draw.rectangle(transp_area, fill = 0)
@@ -367,7 +390,10 @@ class DataParser:
             frameImg.putalpha(mask)
             # print('saving')
             # im = frameImg.convert('RGB')
-            frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png')
+            imgArray = np.asarray(frameImg)
+            self.splitImgs.append(imgArray)
+            # print(imgArray)
+            # frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png')
             # im.save(f'frame{frame}_res_{i}.jpg')
             
             # print('complete')
