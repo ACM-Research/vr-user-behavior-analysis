@@ -176,7 +176,7 @@ class DataParser:
                         elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
                             xPos = centerX + x - self.cols
                             heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-            heatMapArrays.append(heatMapArr)
+            heatMapArrays.append((heatMapArr, 'heatMaps', frame))
         return heatMapArrays
 
     def generateResMapArrs(self, heatMapArrs):
@@ -238,7 +238,7 @@ class DataParser:
                 heatMapArrays.append((heatMapArr, fileName, frame))
         return heatMapArrays
 
-    def renderMapImgs(self, mapArrs, videoOverlay):
+    def renderMapImgs(self, mapArrs, videoOverlay=False):
         numofframes = len(mapArrs)
         progress = 0
         for Map in mapArrs:
@@ -293,6 +293,24 @@ class DataParser:
         print("Creating Heat Maps...")
         self.renderMapImgs(heatMapArrays, videoOverlay)
         
+    def createCompressedVideo(self, fps, videoName = 'compressedVideo.avi', scalingFunction = 'semiCrcl'):
+        heatMapArrays = self.generateHeatMapArrs(scalingFunction)
+        resMapArrays = self.generateResMapArrs(heatMapArrays)
+        out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
+        numofframes = len(resMapArrays)
+        progress = 0
+        print(f'Creating {videoName} video')
+        for Map in resMapArrays:
+            fullImg = self.compressImg(Map)
+            fullImg.save('temp.jpg', quality=95)
+            fullImg = cv2.imread('temp.jpg')
+            out.write(fullImg)
+            progress += (100 / numofframes)
+            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
+        out.release()
+        self.renderMapImgs([resMapArrays[len(resMapArrays) - 1]])
+        print()
+
         
     #Takes approximately 30 seconds on video 23 or 24
     def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'semiCrcl'):
@@ -334,6 +352,21 @@ class DataParser:
         out.release()
         print()
     
+    def createControlVideo(self, fps, videoName='Control.avi'):
+        frames = [f'{self.frameimgs}/frame{frame}.jpg' for frame in self.frameList()]
+        print(frames)
+        out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
+        print(f'Creating {videoName} video')
+        numofframes = len(frames)
+        progress = 0
+        for frame in frames:
+            img = cv2.imread(frame)
+            out.write(img)
+            progress += (100 / numofframes)
+            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
+        out.release()
+        print()
+
     def compressImg(self, Map):
         # print("splitting...")
         self.splitImage(Map[2], Map[0])
@@ -352,14 +385,14 @@ class DataParser:
         unitWidth = self.imagesize[0] / self.cols
         unitHeight = self.imagesize[1] / self.rows
         frameName = 'frame{}.jpg'.format(frame)
-        dirname = os.getcwd()
         # Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
         
         for i in range(0, 5):
             # print("calculations")
             frameImg = Image.open(os.path.join(self.frameimgs, frameName))
             reduction = 4-i
-            frameImg = frameImg.resize((int(self.imagesize[0] / (2**reduction)), int(self.imagesize[1] / (2**reduction))))
+            reductionFactor = (2**reduction) if i != 0 else (4**reduction)
+            frameImg = frameImg.resize((int(self.imagesize[0] / reductionFactor), int(self.imagesize[1] / reductionFactor)))
             frameImg = frameImg.resize(self.imagesize)
             mask = Image.new('L', frameImg.size, color = 255)
             draw = ImageDraw.Draw(mask)
@@ -374,13 +407,13 @@ class DataParser:
                     if c != i:
                         transp_width += unitWidth 
                     else:
-                        transp_area = (x_i, y_i, x_i + transp_width - 1, y_i + unitHeight - 1)
+                        transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
                         # print(transp_area)
                         if transp_width != 0:
                             draw.rectangle(transp_area, fill = 0)
                         x_i += transp_width + unitWidth
                         transp_width = 0 
-                transp_area = (x_i, y_i, x_i + transp_width - 1, y_i + unitHeight - 1)
+                transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
                 # print(transp_area)
                 if transp_width != 0:
                     draw.rectangle(transp_area, fill = 0)
@@ -407,7 +440,10 @@ def main():
     filepath = os.getcwd()
     data = DataParser(filepath, videoId=23, rows=100, cols=200)
     #data.createHeatMapVideo(fps=2)
-    data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapUniform.avi', videoOverlay=False, scalingFunction='uniform')
+    # data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapUniform.avi', videoOverlay=False, scalingFunction='uniform')
+    data.createCompressedVideo(fps=2, videoName = 'CompressedSemiCrcl.avi')
+    data.createControlVideo(fps=2)
+    
 
 def testScaling():
     filepath = os.getcwd()
@@ -419,8 +455,8 @@ def testScaling():
     #data.createHeatMapVideo(fps=2)
 
 if __name__ == "__main__":
-    # main()
-    testScaling()
+    main()
+    # testScaling()
     #filepath = os.getcwd()
     #data = DataParser(filepath, videoId=23, rows=50, cols=100)
     #data.generateTestMaps(data.testFrames)
