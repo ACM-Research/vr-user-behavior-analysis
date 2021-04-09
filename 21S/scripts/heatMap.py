@@ -15,6 +15,10 @@ import time
 import cv2
 import math
 
+# Height and Width given in angles (degrees)
+VIEWPORT_WIDTH = 114
+VIEWPORT_HEIGHT = 57
+
 def scalingVoteFunctionLinear(a, b):
     scaleArr = np.zeros((2*b+1, 2*a+1))
     for x in range(-a, a + 1):
@@ -77,6 +81,7 @@ class DataParser:
             self.imagesize = (im.size[0], im.size[1])
         self.importusertraces()
         self.testFrames = [121, 271, 691, 811, 1111, 1351, 1681]
+        
 
     def frameList(self):
         framenums = []
@@ -140,8 +145,8 @@ class DataParser:
     # function to create an array of all necessary heat map frames; allows for scalable max look value
     def generateHeatMapArrs(self, scalingFunction = 'semiCrcl'):
         heatMapArrays = []
-        semiHorizontalAxis = int(114 * (self.cols / 360) / 2)
-        semiVerticalAxis = int(57 * (self.rows / 180) / 2)
+        semiHorizontalAxis = int(VIEWPORT_WIDTH * (self.cols / 360) / 2)
+        semiVerticalAxis = int(VIEWPORT_HEIGHT * (self.rows / 180) / 2)
         if scalingFunction == 'semiCrcl':
             scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
         elif scalingFunction == 'sqrt':
@@ -196,23 +201,11 @@ class DataParser:
             resMapArrs.append(resMap)
         return resMapArrs
 
-    # NOTE: deprecated function that creates a single heatmap img; max look value not scalable
-    def generateTestMaps(self, testFrames, videoOverlay=False):
-        
-        fig, ax = plt.subplots(figsize=(12,6))
-        ax.axis('off')
-        dirname = os.getcwd()
-        Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
-        Path(f'{dirname}/testFunc/compressedImgs').mkdir(parents=True, exist_ok=True)
+    def generateHeatMapTestingArrs(self, testFrames, functions):
         heatMapArrays = []
-        semiHorizontalAxis = int(114 * (self.cols / 360) / 2)
-        semiVerticalAxis = int(57 * (self.rows / 180) / 2)
-        progress = 0
-        functions = ['semiCrcl', 'sqrt', 'uniform', 'linear', 'squared']
-        numofframes = len(testFrames) * len(functions)
-        for func in functions:
-            Path(f'{dirname}/testFunc/heatMaps/{func}').mkdir(parents=True, exist_ok=True)
-            Path(f'{dirname}/testFunc/resMaps/{func}').mkdir(parents=True, exist_ok=True)
+        semiHorizontalAxis = int(VIEWPORT_WIDTH * (self.cols / 360) / 2)
+        semiVerticalAxis = int(VIEWPORT_HEIGHT * (self.rows / 180) / 2)
+        dirname = os.getcwd()
         for frame in testFrames:
             imgName = f'frame{frame}.jpg'
             for scalingFunction in functions:
@@ -243,45 +236,12 @@ class DataParser:
                                 xPos = centerX + x - self.cols
                                 heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
                 heatMapArrays.append((heatMapArr, fileName, frame))
-        resMapArrs = self.generateResMapArrs(heatMapArrays)
-        print("Creating Resolution Maps...")
-        for Map in resMapArrs:
-            plt.figure(figsize=(16,8),dpi=100)
-            ax = sb.heatmap(Map[0], vmin=0, cbar=False)
-            ax.axis('off')
-            # ax.set_aspect(.5)
-            # print(Map[1])
-            plt.savefig(Map[1], bbox_inches="tight", pad_inches=0)
-            if videoOverlay:
-                heatMap = cv2.imread(Map[1])
-                resizedHeatMap = cv2.resize(heatMap, self.imagesize)
-                frameImg = self.getFrame(Map[2])
-                greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
-                cv2.imwrite('grey.jpg', greyImg)
-                greyImg = cv2.imread('grey.jpg') 
-                fullImg = cv2.addWeighted(resizedHeatMap, 0.95, greyImg, 0.55, 0)
-                cv2.imwrite(Map[1], fullImg)
-            
-            if Map[1].find('semiCrcl') != -1:
-                self.splitImage(Map[2], Map[0])
-            fullImgArr = np.zeros_like(self.splitImgs[0])
-            fullImg = Image.fromarray(fullImgArr)
-            for imgArr in self.splitImgs:
-                img = Image.fromarray(imgArr)
-                # print(fullImg.shape, img.shape)
-                # fullImg = cv2.add(fullImg, img)
-                fullImg.paste(img, (0, 0), img)
-            
-            fullImg = fullImg.convert('RGB')
-            fullImg.save(f'{dirname}/testFunc/compressedImgs/frame{Map[2]}.jpg', quality=95)
-            plt.close()
-            progress += (100 / numofframes)
-            
-            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
-        
+        return heatMapArrays
+
+    def renderMapImgs(self, mapArrs, videoOverlay):
+        numofframes = len(mapArrs)
         progress = 0
-        print("Creating Heat Maps...")
-        for Map in heatMapArrays:
+        for Map in mapArrs:
             plt.figure(figsize=(16,8),dpi=100)
             ax = sb.heatmap(Map[0], vmin=0, cbar=False)
             ax.axis('off')
@@ -296,12 +256,43 @@ class DataParser:
                 greyImg = cv2.imread('grey.jpg') 
                 fullImg = cv2.addWeighted(resizedHeatMap, 0.95, greyImg, 0.55, 0)
                 cv2.imwrite(Map[1], fullImg)
-            
                 
             plt.close()
             progress += (100 / numofframes)
             
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
+
+    def generateTestMaps(self, testFrames, videoOverlay=False):
+        
+        fig, ax = plt.subplots(figsize=(12,6))
+        ax.axis('off')
+        dirname = os.getcwd()
+        Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
+        functions = ['semiCrcl', 'sqrt', 'uniform', 'linear', 'squared']
+        
+        for func in functions:
+            Path(f'{dirname}/testFunc/heatMaps/{func}').mkdir(parents=True, exist_ok=True)
+            Path(f'{dirname}/testFunc/resMaps/{func}').mkdir(parents=True, exist_ok=True)
+            Path(f'{dirname}/testFunc/compressedImgs/{func}').mkdir(parents=True, exist_ok=True)
+
+        heatMapArrays = self.generateHeatMapTestingArrs(testFrames, functions)
+
+        resMapArrs = self.generateResMapArrs(heatMapArrays)
+        print("Creating Resolution Maps...")
+        self.renderMapImgs(resMapArrs, videoOverlay)
+
+        progress = 0
+        numofimgs = len(resMapArrs)
+        print("Creating compressed images...")
+        for Map in resMapArrs:
+            fullImg = self.compressImg(Map)
+            fullImg.save(Map[1].replace('resMaps', 'compressedImgs'), quality=95)
+            progress += (100 / numofimgs)
+            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
+        
+        print("Creating Heat Maps...")
+        self.renderMapImgs(heatMapArrays, videoOverlay)
+        
         
     #Takes approximately 30 seconds on video 23 or 24
     def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'semiCrcl'):
@@ -343,7 +334,19 @@ class DataParser:
         out.release()
         print()
     
-    
+    def compressImg(self, Map):
+        # print("splitting...")
+        self.splitImage(Map[2], Map[0])
+        # print("complete")
+        fullImgArr = np.zeros_like(self.splitImgs[0])
+        fullImg = Image.fromarray(fullImgArr)
+        for imgArr in self.splitImgs:
+            img = Image.fromarray(imgArr)
+            fullImg.paste(img, (0, 0), img)
+        fullImg = fullImg.convert('RGB')
+        return fullImg
+        
+
     def splitImage(self, frame, resMap):
         self.splitImgs = []
         unitWidth = self.imagesize[0] / self.cols
@@ -351,16 +354,13 @@ class DataParser:
         frameName = 'frame{}.jpg'.format(frame)
         dirname = os.getcwd()
         # Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
+        
         for i in range(0, 5):
+            # print("calculations")
             frameImg = Image.open(os.path.join(self.frameimgs, frameName))
             reduction = 4-i
             frameImg = frameImg.resize((int(self.imagesize[0] / (2**reduction)), int(self.imagesize[1] / (2**reduction))))
             frameImg = frameImg.resize(self.imagesize)
-            frameImg.save(f'{dirname}/testFunc/splitImgs/temp.jpg')
-            frameImg = Image.open(os.path.join(f'{dirname}/testFunc/splitImgs/temp.jpg'))
-            # print(f'Res {i}')
-            # time.sleep(3)
-            # frameImg.save(f'frame{frame}.png')
             mask = Image.new('L', frameImg.size, color = 255)
             draw = ImageDraw.Draw(mask)
             # transp_height = 0
@@ -386,7 +386,7 @@ class DataParser:
                     draw.rectangle(transp_area, fill = 0)
                 y_i += unitHeight
             # draw.rectangle((100, 10, 300, 190), fill = 0)
-            
+            # print("calcs complete")
             frameImg.putalpha(mask)
             # print('saving')
             # im = frameImg.convert('RGB')
