@@ -1,19 +1,11 @@
 import math
 import os
-from typing import Tuple, List, Dict, Callable
 
 import numpy as np
-import matplotlib.patches as patches
 import matplotlib.pyplot as plt
-import pandas as pd
-from PIL import Image, ImageDraw
 import seaborn as sb
-from pathlib import Path
-import copy as cp
-import time
 
 import cv2
-import math
 
 # Height and Width given in angles (degrees)
 VIEWPORT_WIDTH = 114
@@ -70,136 +62,12 @@ def scalingVoteFunctionSquared(a, b):
             scaleArr[y+b][x+a] = linearArr[y+b][x+a] ** 2
     return scaleArr
 
-class DataParser:
+class HeatMap:
 
-    def __init__(self, basedir, videoId, rows, cols):
-        self.rows = rows
-        self.cols = cols
-        self.usertracepath = f"{basedir}/Data/UserTracesByVideo/{videoId}/"
-        self.frameimgs = f"{basedir}/Data/VideosData/Videos/SourceFrames/{videoId}/"
-        with Image.open(f"{self.frameimgs}/frame1.jpg") as im:
-            self.imagesize = (im.size[0], im.size[1])
-        self.importusertraces()
-        self.testFrames = [121, 271, 691, 811, 1111, 1351, 1681]
-        
-
-    def frameList(self):
-        framenums = []
-        index = 1
-        frames = [frame for frame in os.listdir(self.frameimgs)]
-        for frame in frames:
-            framenums.append(index)
-            index += 30
-        return framenums
-
-    @staticmethod
-    def convvec2angl(vector):
-        phi = math.degrees(math.asin(vector[1]))
-        theta = math.degrees(math.atan2(vector[0], vector[2]))
-        return theta, phi
-
-    #TODO: Create function for determining how accurate the scaling function is (compare to predefined 2d array of values)
-
-    
-        
-
-    def getFrame(self, id):
-        frameName = 'frame{}.jpg'.format(id)
-        img = cv2.imread(os.path.join(self.frameimgs, frameName))
-        return img
-
-    def importusertraces(self):
-        """Note that this parser is very simple in nature and doesn't really *need*
-        a separate class."""
-        self.all_user_traces = []
-        user_folders = [trace for trace in os.listdir(self.usertracepath)]
-        for user in user_folders:
-            # Test for exclusion.
-            # Or we would, if it weren't now done at runtime.
-            # if QuestionnaireParser is not None:
-            #     if not sample_exclusion_fxn(user[: user.find('.csv')], self.quesparser):
-            #         continue
-            userid = user[: user.find('.csv')]
-            trace_data = pd.read_csv(f"{self.usertracepath}/{user}")
-            trace_rows = trace_data.values
-            self.all_user_traces.append((trace_rows, userid))
-        
-        
-    def convertusertraces(self, frame):
-        # draw user trace points
-        self.usertraces = []
-        # frameList = self.frameList()
-        colwidth = self.imagesize[0] / self.cols # this can be changed
-        rowheight = self.imagesize[1] / self.rows
-        for trace_rows, userid in self.all_user_traces:
-            
-            trace_row = trace_rows[frame - 1]  # Be careful about indexing!!
-            arr = [trace_row[5], trace_row[6], trace_row[7]]
-            x, y = self.convvec2angl(arr)
-            x = ((x+180)/360) * self.imagesize[0]
-            y = ((90-y)/180) * self.imagesize[1]
-            x_index = int(x / colwidth)
-            y_index = int(y / rowheight)
-            self.usertraces.append((userid, frame, (x_index, y_index)))
-                
-    # function to create an array of all necessary heat map frames; allows for scalable max look value
-    def generateHeatMapArrs(self, scalingFunction = 'semiCrcl'):
-        heatMapArrays = []
-        semiHorizontalAxis = int(VIEWPORT_WIDTH * (self.cols / 360) / 2)
-        semiVerticalAxis = int(VIEWPORT_HEIGHT * (self.rows / 180) / 2)
-        if scalingFunction == 'semiCrcl':
-            scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
-        elif scalingFunction == 'sqrt':
-            scaleArr = scalingVoteFunctionSqrt(semiHorizontalAxis, semiVerticalAxis)
-        elif scalingFunction == 'uniform':
-            scaleArr = scalingVoteFunctionUniform(semiHorizontalAxis, semiVerticalAxis)
-        elif scalingFunction == 'linear':
-            scaleArr = scalingVoteFunctionLinear(semiHorizontalAxis, semiVerticalAxis)
-        elif scalingFunction == 'squared':
-            scaleArr = scalingVoteFunctionSquared(semiHorizontalAxis, semiVerticalAxis)
-        else:
-            print("Unknown scaling function given, using semi-circle instead")
-            scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
-        for frame in self.frameList():
-            self.convertusertraces(frame)
-            heatMapArr = np.zeros((self.rows, self.cols))
-            for usertrace in self.usertraces:
-                center = usertrace[2]
-                centerX, centerY = center
-                for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
-                    for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
-                        if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
-                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-                        elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
-                            xPos = self.cols + centerX + x
-                            heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-                        elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
-                            xPos = centerX + x - self.cols
-                            heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
-            heatMapArrays.append((heatMapArr, 'heatMaps', frame))
-        return heatMapArrays
-
-    def generateResMapArrs(self, heatMapArrs):
-        # max_looks = [np.amax(arr) for arr in heatMapArrs]
-        resMapArrs = []
-        # heatMapsCopy = cp.deepcopy(heatMapArrs)
-        for Map in heatMapArrs:
-            heatMap = Map[0]
-            resMapArray = np.zeros((self.rows, self.cols))
-            max_look = np.amax(heatMap)
-            r = 0
-            for row in heatMap:
-                c = 0
-                for col in row:
-                    val = int(col * 5 / max_look)
-                    if val == 5:
-                        val = 4
-                    resMapArray[r][c] = val
-                    c += 1
-                r +=1
-            resMap = (resMapArray, Map[1].replace('heatMaps', 'resMaps'), Map[2])
-            resMapArrs.append(resMap)
-        return resMapArrs
+    def __init__(self, dParser):
+        self.rows = dParser.rows
+        self.cols = dParser.cols
+        self.data = dParser
 
     def generateHeatMapTestingArrs(self, testFrames, functions):
         heatMapArrays = []
@@ -220,9 +88,9 @@ class DataParser:
                     scaleArr = scalingVoteFunctionLinear(semiHorizontalAxis, semiVerticalAxis)
                 elif scalingFunction == 'squared':
                     scaleArr = scalingVoteFunctionSquared(semiHorizontalAxis, semiVerticalAxis)
-                self.convertusertraces(frame)
+                self.data.convertusertraces(frame)
                 heatMapArr = np.zeros((self.rows, self.cols))
-                for usertrace in self.usertraces:
+                for usertrace in self.data.usertraces:
                     center = usertrace[2]
                     centerX, centerY = center
                     for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
@@ -238,88 +106,54 @@ class DataParser:
                 heatMapArrays.append((heatMapArr, fileName, frame))
         return heatMapArrays
 
-    def renderMapImgs(self, mapArrs, videoOverlay=False):
-        numofframes = len(mapArrs)
-        progress = 0
-        for Map in mapArrs:
-            plt.figure(figsize=(16,8),dpi=100)
-            ax = sb.heatmap(Map[0], vmin=0, cbar=False)
-            ax.axis('off')
-            # ax.set_aspect(.5)
-            plt.savefig(Map[1], bbox_inches="tight", pad_inches=0)
-            if videoOverlay:
-                heatMap = cv2.imread(Map[1])
-                resizedHeatMap = cv2.resize(heatMap, self.imagesize)
-                frameImg = self.getFrame(Map[2])
-                greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
-                cv2.imwrite('grey.jpg', greyImg)
-                greyImg = cv2.imread('grey.jpg') 
-                fullImg = cv2.addWeighted(resizedHeatMap, 0.95, greyImg, 0.55, 0)
-                cv2.imwrite(Map[1], fullImg)
-                
-            plt.close()
-            progress += (100 / numofframes)
-            
-            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
+    # function to create an array of all necessary heat map frames; allows for scalable max look value
+    def generateHeatMapArrs(self, scalingFunction = 'semiCrcl'):
+        heatMapArrays = []
+        semiHorizontalAxis = int(VIEWPORT_WIDTH * (self.cols / 360) / 2)
+        semiVerticalAxis = int(VIEWPORT_HEIGHT * (self.rows / 180) / 2)
+        if scalingFunction == 'semiCrcl':
+            scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
+        elif scalingFunction == 'sqrt':
+            scaleArr = scalingVoteFunctionSqrt(semiHorizontalAxis, semiVerticalAxis)
+        elif scalingFunction == 'uniform':
+            scaleArr = scalingVoteFunctionUniform(semiHorizontalAxis, semiVerticalAxis)
+        elif scalingFunction == 'linear':
+            scaleArr = scalingVoteFunctionLinear(semiHorizontalAxis, semiVerticalAxis)
+        elif scalingFunction == 'squared':
+            scaleArr = scalingVoteFunctionSquared(semiHorizontalAxis, semiVerticalAxis)
+        else:
+            print("Unknown scaling function given, using semi-circle instead")
+            scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
+        for frame in self.data.frameList():
+            self.data.convertusertraces(frame)
+            heatMapArr = np.zeros((self.rows, self.cols))
+            for usertrace in self.data.usertraces:
+                center = usertrace[2]
+                centerX, centerY = center
+                for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
+                    for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
+                        if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
+                            heatMapArr[y + centerY][x + centerX] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+                        elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
+                            xPos = self.cols + centerX + x
+                            heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+                        elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
+                            xPos = centerX + x - self.cols
+                            heatMapArr[y + centerY][xPos] += scaleArr[y + semiVerticalAxis][x + semiHorizontalAxis]
+            heatMapArrays.append((heatMapArr, 'heatMaps', frame))
+        return heatMapArrays
 
-    def generateTestMaps(self, testFrames, videoOverlay=False):
-        
-        fig, ax = plt.subplots(figsize=(12,6))
-        ax.axis('off')
-        dirname = os.getcwd()
-        Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
-        functions = ['semiCrcl', 'sqrt', 'uniform', 'linear', 'squared']
-        
-        for func in functions:
-            Path(f'{dirname}/testFunc/heatMaps/{func}').mkdir(parents=True, exist_ok=True)
-            Path(f'{dirname}/testFunc/resMaps/{func}').mkdir(parents=True, exist_ok=True)
-            Path(f'{dirname}/testFunc/compressedImgs/{func}').mkdir(parents=True, exist_ok=True)
-
-        heatMapArrays = self.generateHeatMapTestingArrs(testFrames, functions)
-
-        resMapArrs = self.generateResMapArrs(heatMapArrays)
-        print("Creating Resolution Maps...")
-        self.renderMapImgs(resMapArrs, videoOverlay)
-
-        progress = 0
-        numofimgs = len(resMapArrs)
-        print("Creating compressed images...")
-        for Map in resMapArrs:
-            fullImg = self.compressImg(Map)
-            fullImg.save(Map[1].replace('resMaps', 'compressedImgs'), quality=95)
-            progress += (100 / numofimgs)
-            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
-        
-        print("Creating Heat Maps...")
-        self.renderMapImgs(heatMapArrays, videoOverlay)
-        
-    def createCompressedVideo(self, fps, videoName = 'compressedVideo.avi', scalingFunction = 'semiCrcl'):
-        heatMapArrays = self.generateHeatMapArrs(scalingFunction)
-        resMapArrays = self.generateResMapArrs(heatMapArrays)
-        out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
-        numofframes = len(resMapArrays)
-        progress = 0
-        print(f'Creating {videoName} video')
-        for Map in resMapArrays:
-            fullImg = self.compressImg(Map)
-            fullImg.save('temp.jpg', quality=95)
-            fullImg = cv2.imread('temp.jpg')
-            out.write(fullImg)
-            progress += (100 / numofframes)
-            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
-        out.release()
-        self.renderMapImgs([resMapArrays[len(resMapArrays) - 1]])
-        print()
-
-        
-    #Takes approximately 30 seconds on video 23 or 24
+        #Takes approximately 30 seconds on video 23 or 24
     def createHeatMapVideo(self, fps, videoName = 'heatmapVideo.avi', videoOverlay = False, scalingFunction = 'semiCrcl'):
         print("Creating {} video".format(videoName))
         heatMapArrays = self.generateHeatMapArrs(scalingFunction)
         if videoOverlay:
-            out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
+            out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.data.imagesize)
         else:
-            ax = sb.heatmap(heatMapArrays[0], vmin=0, vmax=max_looks, cbar=False)
+            # print(heatMapArrays[0])
+            plt.figure(figsize=(16,8),dpi=100)
+            ax = sb.heatmap(heatMapArrays[0][0], vmin=0, cbar=False)
+            
             ax.axis('off')
             plt.savefig('heatmap.jpg', bbox_inches="tight", pad_inches=0)
             plt.close()
@@ -327,18 +161,20 @@ class DataParser:
             height, width, layers = img.shape
             size = (width, height) #Size of heatmap image
             out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
-        numofframes = len(self.frameList())
+        numofframes = len(self.data.frameList())
         progress = 0
         frameId = 1
         for map in heatMapArrays:
-            ax = sb.heatmap(map, vmin=0, cbar=False)
+            plt.figure(figsize=(16,8),dpi=100)
+            ax = sb.heatmap(map[0], vmin=0, cbar=False)
             ax.axis('off')
+            
             plt.savefig('heatmap.jpg', bbox_inches="tight", pad_inches=0)
             plt.close()
             heatMap = cv2.imread('heatmap.jpg')
             if videoOverlay:
-                resizedHeatMap = cv2.resize(heatMap, self.imagesize)
-                frameImg = self.getFrame(frameId)
+                resizedHeatMap = cv2.resize(heatMap, self.data.imagesize)
+                frameImg = self.data.getFrame(frameId)
                 greyImg = cv2.cvtColor(frameImg, cv2.COLOR_BGR2GRAY)
                 cv2.imwrite('grey.jpg', greyImg)
                 greyImg = cv2.imread('grey.jpg') 
@@ -351,117 +187,3 @@ class DataParser:
             print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
         out.release()
         print()
-    
-    def createControlVideo(self, fps, videoName='Control.avi'):
-        frames = [f'{self.frameimgs}/frame{frame}.jpg' for frame in self.frameList()]
-        print(frames)
-        out = cv2.VideoWriter(videoName, cv2.VideoWriter_fourcc(*'DIVX'), fps, self.imagesize)
-        print(f'Creating {videoName} video')
-        numofframes = len(frames)
-        progress = 0
-        for frame in frames:
-            img = cv2.imread(frame)
-            out.write(img)
-            progress += (100 / numofframes)
-            print("Progress " + str(int(progress)) + "%", end='\r', flush=True)
-        out.release()
-        print()
-
-    def compressImg(self, Map):
-        # print("splitting...")
-        self.splitImage(Map[2], Map[0])
-        # print("complete")
-        fullImgArr = np.zeros_like(self.splitImgs[0])
-        fullImg = Image.fromarray(fullImgArr)
-        for imgArr in self.splitImgs:
-            img = Image.fromarray(imgArr)
-            fullImg.paste(img, (0, 0), img)
-        fullImg = fullImg.convert('RGB')
-        return fullImg
-        
-
-    def splitImage(self, frame, resMap):
-        self.splitImgs = []
-        unitWidth = self.imagesize[0] / self.cols
-        unitHeight = self.imagesize[1] / self.rows
-        frameName = 'frame{}.jpg'.format(frame)
-        # Path(f'{dirname}/testFunc/splitImgs').mkdir(parents=True, exist_ok=True)
-        
-        for i in range(0, 5):
-            # print("calculations")
-            frameImg = Image.open(os.path.join(self.frameimgs, frameName))
-            reduction = 4-i
-            reductionFactor = (2**reduction) if i != 0 else (4**reduction)
-            frameImg = frameImg.resize((int(self.imagesize[0] / reductionFactor), int(self.imagesize[1] / reductionFactor)))
-            frameImg = frameImg.resize(self.imagesize)
-            mask = Image.new('L', frameImg.size, color = 255)
-            draw = ImageDraw.Draw(mask)
-            # transp_height = 0
-            
-            y_i = 0
-            for r in resMap:
-                transp_width = 0
-                x_i = 0
-                for c in r:
-                    
-                    if c != i:
-                        transp_width += unitWidth 
-                    else:
-                        transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
-                        # print(transp_area)
-                        if transp_width != 0:
-                            draw.rectangle(transp_area, fill = 0)
-                        x_i += transp_width + unitWidth
-                        transp_width = 0 
-                transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
-                # print(transp_area)
-                if transp_width != 0:
-                    draw.rectangle(transp_area, fill = 0)
-                y_i += unitHeight
-            # draw.rectangle((100, 10, 300, 190), fill = 0)
-            # print("calcs complete")
-            frameImg.putalpha(mask)
-            # print('saving')
-            # im = frameImg.convert('RGB')
-            imgArray = np.asarray(frameImg)
-            self.splitImgs.append(imgArray)
-            # print(imgArray)
-            # frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png')
-            # im.save(f'frame{frame}_res_{i}.jpg')
-            
-            # print('complete')
-
-
-
-
-#Will need to split up source videos into frames once ML is used
-
-def main():
-    filepath = os.getcwd()
-    data = DataParser(filepath, videoId=23, rows=100, cols=200)
-    #data.createHeatMapVideo(fps=2)
-    # data.createHeatMapVideo(fps=2, videoName = 'heatMapVideoWithOverlapUniform.avi', videoOverlay=False, scalingFunction='uniform')
-    data.createCompressedVideo(fps=2, videoName = 'CompressedSemiCrcl.avi')
-    data.createControlVideo(fps=2)
-    
-
-def testScaling():
-    filepath = os.getcwd()
-    data = DataParser(filepath, videoId=23, rows=50, cols=100)
-    # print(data.imagesize)
-    data.generateTestMaps(data.testFrames, videoOverlay=False)
-    
-    
-    #data.createHeatMapVideo(fps=2)
-
-if __name__ == "__main__":
-    main()
-    # testScaling()
-    #filepath = os.getcwd()
-    #data = DataParser(filepath, videoId=23, rows=50, cols=100)
-    #data.generateTestMaps(data.testFrames)
-    #scaleArr = data.scalingVoteFunctionSemiCrcl(10, 5)
-    #for a in scaleArr:
-     #   for b in a:
-      #      print(round(b,2), end=' ')
-       # print()

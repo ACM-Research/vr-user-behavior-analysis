@@ -11,3 +11,5 @@ heatmap.png
 /heatMapVideoWithOverlapSemiCircle.avi
 /test.jpg
 /heatMapVideoWithOverlapSqrt.avi
+/21S/scripts/__pycache__
+*.avi
