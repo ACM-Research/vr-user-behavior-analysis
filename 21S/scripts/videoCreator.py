@@ -83,7 +83,7 @@ class VRConverter:
 def main():
 
     converter = VRConverter(videoId=23, rows=50, cols=100)
-    converter.makeVideo('control', 'Control.avi', 'linear')
+    converter.makeVideo('compress', 'CompressedSemi.avi', 'semiCrcl')
 
 if __name__ == "__main__":
     main()

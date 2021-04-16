@@ -25,7 +25,7 @@ class Deresolutionizer:
             for row in heatMap:
                 c = 0
                 for col in row:
-                    val = int(col * 5 / max_look)
+                    val = -1 if int(col)==0 else int(col * 5 / max_look)  # val = -1 if no one is looking, else 0-4
                     if val == 5:
                         val = 4
                     resMapArray[r][c] = val
@@ -53,11 +53,14 @@ class Deresolutionizer:
         unitHeight = self.imagesize[1] / self.rows
         frameName = 'frame{}.jpg'.format(frame)
         
+        blackImg = Image.new('RGBA', self.imagesize, color = 0)
+        imgArray = np.asarray(blackImg)
+        self.splitImgs.append(imgArray)
         for i in range(0, 5):
             # print("calculations")
             frameImg = Image.open(os.path.join(self.frameimgs, frameName))
             reduction = 4-i
-            reductionFactor = (2**reduction) if i != 0 else (4**reduction)
+            reductionFactor = (2**reduction)
             frameImg = frameImg.resize((int(self.imagesize[0] / reductionFactor), int(self.imagesize[1] / reductionFactor)))
             frameImg = frameImg.resize(self.imagesize)
             mask = Image.new('L', frameImg.size, color = 255)
@@ -73,13 +76,13 @@ class Deresolutionizer:
                     if c != i:
                         transp_width += unitWidth 
                     else:
-                        transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
+                        transp_area = (x_i, y_i, x_i + transp_width - 1, y_i + unitHeight - 1)
                         # print(transp_area)
                         if transp_width != 0:
                             draw.rectangle(transp_area, fill = 0)
                         x_i += transp_width + unitWidth
                         transp_width = 0 
-                transp_area = (x_i, y_i, x_i + transp_width, y_i + unitHeight)
+                transp_area = (x_i, y_i, x_i + transp_width - 1, y_i + unitHeight - 1)
                 # print(transp_area)
                 if transp_width != 0:
                     draw.rectangle(transp_area, fill = 0)
@@ -88,12 +91,13 @@ class Deresolutionizer:
             # print("calcs complete")
             frameImg.putalpha(mask)
             # print('saving')
+            # dirname = os.getcwd()
             # im = frameImg.convert('RGB')
             imgArray = np.asarray(frameImg)
             self.splitImgs.append(imgArray)
             # print(imgArray)
-            # frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png')
-            # im.save(f'frame{frame}_res_{i}.jpg')
+            # frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png', quality=1)
+            # im.save(f'frame{frame}_res_{i}.jpg', quality=1)
             
             # print('complete')
 
