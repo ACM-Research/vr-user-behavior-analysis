@@ -22,6 +22,7 @@ class DataParser:
             self.imagesize = (im.size[0], im.size[1])
         self.importusertraces()
         self.testFrames = [121, 271, 691, 811, 1111, 1351, 1681]
+        self.videoId = videoId
         
 
     def frameList(self):
@@ -81,6 +82,29 @@ class DataParser:
             y_index = int(y / rowheight)
             self.usertraces.append((userid, frame, (x_index, y_index)))
     
+    def convertTracesForAllUsers(self):
+        traces_per_user = {}
+        for user in self.all_user_traces:
+            traces_per_user[user[1]] = self.convertTracesPerUser(user)
+        return traces_per_user
+
+
+    def convertTracesPerUser(self, user):
+        traces = []
+        colwidth = self.imagesize[0] / self.cols # this can be changed
+        rowheight = self.imagesize[1] / self.rows
+        trace_rows, userid = user
+        for frame in self.frameList():
+            trace_row = trace_rows[frame - 1]  # Be careful about indexing!!
+            arr = [trace_row[5], trace_row[6], trace_row[7]]
+            x, y = self.convvec2angl(arr)
+            x = ((x+180)/360) * self.imagesize[0]
+            y = ((90-y)/180) * self.imagesize[1]
+            x_index = int(x / colwidth)
+            y_index = int(y / rowheight)
+            traces.append((frame, (x_index, y_index)))
+        return traces
+
     def createControlVideo(self, fps, videoName='Control.avi'):
         frames = [f'{self.frameimgs}/frame{frame}.jpg' for frame in self.frameList()]
         # print(frames)

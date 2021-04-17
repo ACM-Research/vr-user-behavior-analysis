@@ -4,6 +4,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sb
+import pandas as pd
+from pathlib import Path
 
 import cv2
 
@@ -68,6 +70,20 @@ class HeatMap:
         self.rows = dParser.rows
         self.cols = dParser.cols
         self.data = dParser
+
+    
+    def generateHeatMapCSVs(self):
+        path = os.path.abspath(f'./Data/heatMapCSVs/{self.data.videoId}')
+        Path(path).mkdir(777, parents=True, exist_ok=True)
+        for frame in self.data.frameList():
+            self.data.convertusertraces(frame)
+            heatMapArr = np.zeros((5, 10))
+            for usertrace in self.data.usertraces:
+                indices = (int(usertrace[2][0] / self.rows * 5), int(usertrace[2][1] / self.cols * 10))
+                heatMapArr[indices[1]][indices[0]] += 1
+            pd.DataFrame(heatMapArr).to_csv(os.path.join(path, f'{frame}.csv'))
+
+
 
     def generateHeatMapTestingArrs(self, testFrames, functions):
         heatMapArrays = []

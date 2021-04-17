@@ -16,6 +16,7 @@ class VRConverter:
         self.data = DataParser(os.getcwd(), videoId, rows, cols)
         self.heat = HeatMap(self.data)
         self.res = DeRes(self.data)
+        
 
     def renderMapImgs(self, mapArrs, videoOverlay=False):
         numofframes = len(mapArrs)
@@ -57,6 +58,7 @@ class VRConverter:
         heatMapArrays = self.heat.generateHeatMapTestingArrs(testFrames, functions)
 
         resMapArrs = self.res.generateResMapArrs(heatMapArrays)
+        
         print("Creating Resolution Maps...")
         self.renderMapImgs(resMapArrs, videoOverlay)
 
@@ -80,10 +82,20 @@ class VRConverter:
         elif videoType == 'control':
             self.data.createControlVideo(fps=fps, videoName=name)
 
+    def getStats(self, scalingFunction):
+        heatMaps = self.heat.generateHeatMapArrs(scalingFunction)
+        resMaps = self.res.generateResMapArrs(heatMaps)
+        self.res.generateUserExpStats(resMaps)
+
+    def generateHeatMapCSVs(self):
+        self.heat.generateHeatMapCSVs()
+
 def main():
 
     converter = VRConverter(videoId=23, rows=50, cols=100)
-    converter.makeVideo('compress', 'CompressedSemi.avi', 'semiCrcl')
+    # converter.makeVideo('compress', 'CompressedLin.avi', 'linear')
+    # converter.getStats('linear')
+    converter.generateHeatMapCSVs()
 
 if __name__ == "__main__":
     main()

@@ -1,18 +1,72 @@
 import os
 
+import math
 import numpy as np
 from PIL import Image, ImageDraw
 
 import cv2
 
+# Height and Width given in angles (degrees)
+VIEWPORT_WIDTH = 114
+VIEWPORT_HEIGHT = 57
 
 class Deresolutionizer:
 
     def __init__(self, dParser):
+        self.traces = dParser.convertTracesForAllUsers()
         self.rows = dParser.rows
         self.cols = dParser.cols
         self.imagesize = dParser.imagesize
         self.frameimgs = dParser.frameimgs
+        self.framelist = dParser.frameList()
+        
+    def generateUserExpStats(self, resMaps):
+        semiHorizontalAxis = int(VIEWPORT_WIDTH * (self.cols / 360) / 2)
+        semiVerticalAxis = int(VIEWPORT_HEIGHT * (self.rows / 180) / 2)
+        avgPerFrame = {frame: 0 for frame in self.framelist}
+        avgPerUser = {}
+        for user in self.traces:
+            avgPerUser[user] = 0
+            for trace in self.traces[user]:
+                centerX, centerY = trace[1]
+                frameIndex = int(trace[0] / 30)
+                resMapArr = resMaps[frameIndex][0]
+                userFrameTotal = 0
+                area = 0
+                for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
+                    for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
+                        theta = math.atan2(y, x)
+                        a = semiHorizontalAxis
+                        b = semiVerticalAxis
+                        ellipseRadius = (a * b) / math.sqrt((a**2) * math.sin(theta) ** 2 + (b ** 2) * math.cos(theta) ** 2)
+                        radius = math.sqrt(x ** 2 + y ** 2)
+                        if radius < ellipseRadius:
+                            area += 1
+                            # if position is within frame
+                            if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
+                                userFrameTotal += resMapArr[y + centerY][x + centerX] + 1
+                            # if position is too far to the left
+                            elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
+                                xPos = self.cols + centerX + x
+                                userFrameTotal += resMapArr[y + centerY][xPos] + 1
+                            # too far to the right
+                            elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
+                                xPos = centerX + x - self.cols
+                                userFrameTotal += resMapArr[y + centerY][xPos] + 1
+                userFrameAvg = userFrameTotal / area
+                avgPerFrame[trace[0]] += userFrameAvg
+                avgPerUser[user] += userFrameAvg
+            avgPerUser[user] = avgPerUser[user] / len(self.framelist)
+        for frame in avgPerFrame:
+            avgPerFrame[frame] /= len(self.traces)
+        avg1 = sum(avgPerFrame.values()) / len(self.framelist)
+        avg2 = sum(avgPerUser.values()) / len(self.traces)
+        print(avg1)
+        print(avg2)
+                
+            
+                
+
 
 
     def generateResMapArrs(self, heatMapArrs):
