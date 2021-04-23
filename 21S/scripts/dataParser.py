@@ -38,10 +38,11 @@ class DataParser:
     def frameList(self):
         framenums = []
         index = 1
-        frames = [frame for frame in os.listdir(self.frameimgs)]
+        frames = [int(frame[5:-4]) for frame in os.listdir(self.frameimgs)]
+        frames.sort()
         for frame in frames:
-            framenums.append(index)
-            index += 30
+            framenums.append(frame)
+            
         return framenums
 
     @staticmethod

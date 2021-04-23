@@ -100,8 +100,8 @@ def main():
     TEST_FRAMES = [121, 271, 691, 811, 1111, 1351, 1681]
     # converter.makeVideo('compress', 'CompressedSemi23New.avi', 'semiCrcl')
     userExpPerFrame, userExpPerUser, storagePerFrame = converter.getStats('semiCrcl')
-    # for frame in storagePerFrame:
-    #     print(f'{frame}: {storagePerFrame[frame] * 100}%')
+    for frame in storagePerFrame:
+        print(f'{frame}: {storagePerFrame[frame] * 100}%')
     # converter.generateTestMaps(TEST_FRAMES)
     # converter.generateHeatMapCSVs()
 
