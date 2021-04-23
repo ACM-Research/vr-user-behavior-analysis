@@ -10,21 +10,111 @@ import cv2
 VIEWPORT_WIDTH = 114
 VIEWPORT_HEIGHT = 57
 
+def scalingVoteFunctionLinear(a, b):
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            # theta = 0
+            if x == 0 and y == 0:
+                scaleArr[b][a] = (a+b)/2
+            else:
+                theta = math.atan2(y, x)
+                ellipseRadius = (a * b) / math.sqrt((a**2) * math.sin(theta) ** 2 + (b ** 2) * math.cos(theta) ** 2)
+                radius = math.sqrt(x ** 2 + y ** 2)
+                dist = ((a+b)/2) * ((ellipseRadius - radius) / ellipseRadius) #Max value of linear function
+                if dist < 0:
+                    scaleArr[y + b][x + a] = 0
+                else:
+                    scaleArr[y + b][x + a] = dist
+    return scaleArr
+
+def scalingVoteFunctionSqrt(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            scaleArr[y+b][x+a] = math.sqrt(linearArr[y+b][x+a])
+    return scaleArr
+
+def scalingVoteFunctionSemiCrcl(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            scaleArr[y+b][x+a] = (a+b / 2) - math.sqrt((a+b / 2) ** 2 - linearArr[y+b][x+a] ** 2)
+    return scaleArr
+
+def scalingVoteFunctionUniform(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            if linearArr[y+b][x+a] > 0.1:
+                scaleArr[y+b][x+a] = 1
+    return scaleArr
+
+def scalingVoteFunctionSquared(a, b):
+    linearArr =  scalingVoteFunctionLinear(a, b)
+    scaleArr = np.zeros((2*b+1, 2*a+1))
+    for x in range(-a, a + 1):
+        for y in range(-b, b + 1):
+            scaleArr[y+b][x+a] = linearArr[y+b][x+a] ** 2
+    return scaleArr
+
 class Deresolutionizer:
 
-    def __init__(self, dParser):
+    def __init__(self, dParser, acceptableHeat = .25):
+        self.data = dParser
         self.traces = dParser.convertTracesForAllUsers()
         self.rows = dParser.rows
         self.cols = dParser.cols
         self.imagesize = dParser.imagesize
         self.frameimgs = dParser.frameimgs
         self.framelist = dParser.frameList()
+        self.percentThreshold = acceptableHeat
+
+    
+
+    def generateStorageStats(self, resMaps):
+        # self.data.createControlImages()
+        percentPerFrame = {}
+        numofframes = len(resMaps)
+        frames = [f'{self.frameimgs}/frame{frame}.jpg' for frame in self.framelist]
+        print('generating storage statistics...')
+        for i, Map in enumerate(resMaps):
+            # print(frames[i])
+            fullImg = self.compressImg(Map)
+            fullImg.save('compressed.jpg', quality=95)
+            controlImgPath = frames[i]
+            compressedSize = os.path.getsize('compressed.jpg') 
+            controlSize = os.path.getsize(controlImgPath)
+            percentPerFrame[Map[2]] = compressedSize / controlSize
+            os.remove('compressed.jpg')
+            # print(f'Frame {Map[2]}: {percentPerFrame[Map[2]]}')
+        # print(f'Average ratio: {sum(percentPerFrame.values()) / numofframes}')
+        return percentPerFrame
+            
         
-    def generateUserExpStats(self, resMaps):
-        semiHorizontalAxis = int(VIEWPORT_WIDTH * (self.cols / 360) / 2)
-        semiVerticalAxis = int(VIEWPORT_HEIGHT * (self.rows / 180) / 2)
+
+
+    def generateUserExpStats(self, resMaps, scalingFunction):
+        print('Generating User Experience statistics...')
+        semiHorizontalAxis = int((1-self.percentThreshold)*VIEWPORT_WIDTH * (self.cols / 360) / 2)
+        semiVerticalAxis = int((1-self.percentThreshold)*VIEWPORT_HEIGHT * (self.rows / 180) / 2)
         avgPerFrame = {frame: 0 for frame in self.framelist}
         avgPerUser = {}
+        # if scalingFunction == 'semiCrcl':
+        #     scaleArr = scalingVoteFunctionSemiCrcl(semiHorizontalAxis, semiVerticalAxis)
+        # elif scalingFunction == 'sqrt':
+        #     scaleArr = scalingVoteFunctionSqrt(semiHorizontalAxis, semiVerticalAxis)
+        # elif scalingFunction == 'uniform':
+        #     scaleArr = scalingVoteFunctionUniform(semiHorizontalAxis, semiVerticalAxis)
+        # elif scalingFunction == 'linear':
+        #     scaleArr = scalingVoteFunctionLinear(semiHorizontalAxis, semiVerticalAxis)
+        # elif scalingFunction == 'squared':
+        #     scaleArr = scalingVoteFunctionSquared(semiHorizontalAxis, semiVerticalAxis)
+        # maxFactor = np.amax(scaleArr)
+        # progress = 0
         for user in self.traces:
             avgPerUser[user] = 0
             for trace in self.traces[user]:
@@ -33,6 +123,7 @@ class Deresolutionizer:
                 resMapArr = resMaps[frameIndex][0]
                 userFrameTotal = 0
                 area = 0
+                
                 for x in range(-semiHorizontalAxis, semiHorizontalAxis + 1):
                     for y in range(-semiVerticalAxis, semiVerticalAxis + 1):
                         theta = math.atan2(y, x)
@@ -42,31 +133,32 @@ class Deresolutionizer:
                         radius = math.sqrt(x ** 2 + y ** 2)
                         if radius < ellipseRadius:
                             area += 1
+                            # if x == 0 and y == 0:
+                            #     print('here')
                             # if position is within frame
                             if centerX + x >= 0 and centerY + y >= 0 and centerX + x < self.cols and centerY + y < self.rows:
-                                userFrameTotal += resMapArr[y + centerY][x + centerX] + 1
+                                userFrameTotal += (resMapArr[y + centerY][x + centerX]) - 1
                             # if position is too far to the left
                             elif centerX + x < 0 and centerY + y >= 0 and centerY + y < self.rows:
                                 xPos = self.cols + centerX + x
-                                userFrameTotal += resMapArr[y + centerY][xPos] + 1
+                                userFrameTotal += (resMapArr[y + centerY][xPos]) - 1
                             # too far to the right
                             elif centerX + x >= self.cols and centerY + y >= 0 and centerY + y < self.rows:
                                 xPos = centerX + x - self.cols
-                                userFrameTotal += resMapArr[y + centerY][xPos] + 1
+                                userFrameTotal += (resMapArr[y + centerY][xPos]) - 1
                 userFrameAvg = userFrameTotal / area
                 avgPerFrame[trace[0]] += userFrameAvg
                 avgPerUser[user] += userFrameAvg
-            avgPerUser[user] = avgPerUser[user] / len(self.framelist)
+            avgPerUser[user] /= len(self.framelist)
         for frame in avgPerFrame:
             avgPerFrame[frame] /= len(self.traces)
-        avg1 = sum(avgPerFrame.values()) / len(self.framelist)
-        avg2 = sum(avgPerUser.values()) / len(self.traces)
-        print(avg1)
-        print(avg2)
-                
-            
-                
-
+        # print(avgPerFrame)
+        # print(avgPerUser)
+        # avg1 = sum(avgPerFrame.values()) / len(self.framelist)
+        # avg2 = sum(avgPerUser.values()) / len(self.traces)
+        # print(avg1)
+        # print(avg2)
+        return avgPerFrame, avgPerUser
 
 
     def generateResMapArrs(self, heatMapArrs):
@@ -79,9 +171,12 @@ class Deresolutionizer:
             for row in heatMap:
                 c = 0
                 for col in row:
-                    val = -1 if int(col)==0 else int(col * 5 / max_look)  # val = -1 if no one is looking, else 0-4
-                    if val == 5:
-                        val = 4
+                    if col == 0:
+                        val = 0
+                    elif col < (self.percentThreshold*max_look):
+                        val = 1
+                    else:
+                        val = 2
                     resMapArray[r][c] = val
                     c += 1
                 r +=1
@@ -110,11 +205,11 @@ class Deresolutionizer:
         blackImg = Image.new('RGBA', self.imagesize, color = 0)
         imgArray = np.asarray(blackImg)
         self.splitImgs.append(imgArray)
-        for i in range(0, 5):
+        for i in range(1, 3):
             # print("calculations")
             frameImg = Image.open(os.path.join(self.frameimgs, frameName))
-            reduction = 4-i
-            reductionFactor = (2**reduction)
+            reduction = 2-i
+            reductionFactor = (16**reduction)
             frameImg = frameImg.resize((int(self.imagesize[0] / reductionFactor), int(self.imagesize[1] / reductionFactor)))
             frameImg = frameImg.resize(self.imagesize)
             mask = Image.new('L', frameImg.size, color = 255)

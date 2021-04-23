@@ -24,6 +24,16 @@ class DataParser:
         self.testFrames = [121, 271, 691, 811, 1111, 1351, 1681]
         self.videoId = videoId
         
+    def createControlImages(self):
+        controlPath = f'{os.getcwd()}/21S/data/control/{self.videoId}'
+        if not os.path.isdir(controlPath):
+            frames = [f'{self.frameimgs}/frame{frame}.jpg' for frame in self.frameList()]
+            Path(controlPath).mkdir(777, parents=True, exist_ok=True)
+            for frame in frames:
+                imgPath = f'{frame}'
+                img = Image.open(frame)
+                img.save(imgPath, quality=95)
+
 
     def frameList(self):
         framenums = []

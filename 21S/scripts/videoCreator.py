@@ -10,12 +10,14 @@ from pathlib import Path
 
 import cv2
 
+
+
 class VRConverter:
 
-    def __init__(self, videoId, rows, cols):
+    def __init__(self, videoId, rows, cols, heatThreshold = .25):
         self.data = DataParser(os.getcwd(), videoId, rows, cols)
         self.heat = HeatMap(self.data)
-        self.res = DeRes(self.data)
+        self.res = DeRes(self.data, heatThreshold)
         
 
     def renderMapImgs(self, mapArrs, videoOverlay=False):
@@ -85,17 +87,23 @@ class VRConverter:
     def getStats(self, scalingFunction):
         heatMaps = self.heat.generateHeatMapArrs(scalingFunction)
         resMaps = self.res.generateResMapArrs(heatMaps)
-        self.res.generateUserExpStats(resMaps)
+        userExpPerFrame, userExpPerUser = self.res.generateUserExpStats(resMaps, scalingFunction)
+        storagePerFrame = self.res.generateStorageStats(resMaps)
+        return userExpPerFrame, userExpPerUser, storagePerFrame
 
     def generateHeatMapCSVs(self):
         self.heat.generateHeatMapCSVs()
 
 def main():
 
-    converter = VRConverter(videoId=23, rows=50, cols=100)
-    # converter.makeVideo('compress', 'CompressedLin.avi', 'linear')
-    # converter.getStats('linear')
-    converter.generateHeatMapCSVs()
+    converter = VRConverter(videoId=23, rows=50, cols=100, heatThreshold=.25)
+    TEST_FRAMES = [121, 271, 691, 811, 1111, 1351, 1681]
+    # converter.makeVideo('compress', 'CompressedSemi23New.avi', 'semiCrcl')
+    userExpPerFrame, userExpPerUser, storagePerFrame = converter.getStats('semiCrcl')
+    # for frame in storagePerFrame:
+    #     print(f'{frame}: {storagePerFrame[frame] * 100}%')
+    # converter.generateTestMaps(TEST_FRAMES)
+    # converter.generateHeatMapCSVs()
 
 if __name__ == "__main__":
     main()
