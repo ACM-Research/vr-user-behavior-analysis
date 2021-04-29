@@ -9,6 +9,7 @@ import matplotlib.animation as animation
 import seaborn as sb
 from pathlib import Path
 import pandas as pd
+from celluloid import Camera
 
 import cv2
 
@@ -109,14 +110,29 @@ def main():
     fig = plt.figure(figsize=(12, 6))
     sb.set_theme()
     plt.ylim(0, 1)
-    converter = VRConverter(videoId=23, rows=50, cols=100, heatThreshold=.25)
+
+    func = 'linear'
+    videoId = 23
+    videoType = 'compress'
+
+    converter = VRConverter(videoId=videoId, rows=50, cols=100, heatThreshold=.20)
+    
+    videoName = f'{videoType}{func}{videoId}'
     TEST_FRAMES = [121, 271, 691, 811, 1111, 1351, 1681]
-    # converter.makeVideo('compress', 'CompressedSemi23New.avi', 'semiCrcl')
-    userExpPerFrame, userExpPerUser, storagePerFrame  = converter.getStats('linear')
+    # converter.makeVideo(videoType, f'{videoName}.avi', func)
+    userExpPerFrame, userExpPerUser, storagePerFrame  = converter.getStats(func)
     # for frame in userExpPerFrame:
     #     print(f'{frame}: {userExpPerFrame[frame] * 100}%')
+
+    values = list(userExpPerFrame.values())
+    avg = np.average(values)
+    print(f'Average User Experience: {avg}')
+
     frames = list(userExpPerFrame.keys())
     plt.xlim(frames[0], frames[-1])
+    plt.ylabel('Ratio', fontsize=16)
+    plt.xlabel('Frame', fontsize=16)
+    plt.title('Storage vs User Experience per Frame', fontsize=18)
     userValues = list(userExpPerFrame.values())
     storageValues = list(storagePerFrame.values())
     dataArray = np.array([userValues, storageValues])
@@ -127,11 +143,35 @@ def main():
     
     # print(pd.melt(data, ignore_index=False, var_name='Type', value_name='Ratio'))
     # ax = sb.lineplot(data=data)
+    # Writer = animation.writers['ffmpeg']
+    # writer = Writer(fps=2, metadata=dict(artist='Me'), bitrate=1800)
+    # camera = Camera(fig)
     ani = animation.FuncAnimation(fig, animate, frames=len(frames), repeat=True)
     
     # ani.save()
     
-    plt.show()
+    ani.save(f'{videoName}PerFrameStats.gif', writer='PillowWriter', fps=2)
+
+    plt.clf()
+    fig = plt.figure(figsize=(10,10))
+    sb.set_theme()
+    # sb.set_context('paper')
+    plt.xlim(0, 1)
+    # plt.xticks()
+    users = list(userExpPerUser.keys())
+    userValues = list(userExpPerUser.values())
+    dataArray = np.array([userValues])
+    dataArray = np.transpose(dataArray)
+    data = pd.DataFrame(dataArray, index=users, columns=['Values'])
+    # print(data)
+    ax = sb.barplot(data=data, x='Values', y=data.index, color='b')
+    ax.set_xticks(np.arange(0, 1.2, .2))
+    ax.set_xticklabels(["{:.1f}".format(a) for a in np.arange(0, 1.2, .2)])
+    plt.ylabel('Users', fontsize=16)
+    plt.xlabel('Value', fontsize=16)
+    plt.title('User Experience Rating per User', fontsize=18)
+    # sb.despine(left=True, bottom=True)
+    plt.savefig(f'{videoName}PerUserStats.jpg')
     # plt.plot(frames, values)
     # plt.show()
     # converter.generateTestMaps(TEST_FRAMES)
