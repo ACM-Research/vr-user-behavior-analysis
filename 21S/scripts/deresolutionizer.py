@@ -209,9 +209,12 @@ class Deresolutionizer:
             # print("calculations")
             frameImg = Image.open(os.path.join(self.frameimgs, frameName))
             reduction = 2-i
-            reductionFactor = (16**reduction)
+            reductionFactor = (64**reduction)
+            # reductionFactor = 1
             frameImg = frameImg.resize((int(self.imagesize[0] / reductionFactor), int(self.imagesize[1] / reductionFactor)))
             frameImg = frameImg.resize(self.imagesize)
+            # if i == 0:
+            #     frameImg = blackImg
             mask = Image.new('L', frameImg.size, color = 255)
             draw = ImageDraw.Draw(mask)
             # transp_height = 0
@@ -245,7 +248,8 @@ class Deresolutionizer:
             imgArray = np.asarray(frameImg)
             self.splitImgs.append(imgArray)
             # print(imgArray)
-            # frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png', quality=1)
+            dirname = os.getcwd()
+            frameImg.save(f'{dirname}/testFunc/splitImgs/frame{frame}_res_{i}.png')
             # im.save(f'frame{frame}_res_{i}.jpg', quality=1)
             
             # print('complete')
