@@ -1,28 +1,17 @@
 # vr-user-behavior-analysis
-Exploring user behavior in Virtual Reality through heat map visualization and behavior classification
+
 
 Research Poster: [Link](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/main/ACM%20Research%20Poster%20-%20VR.pdf)
 
 ![Poster picture](https://github.com/ACM-Research/vr-user-behavior-analysis/blob/5c57497fe9c28c91c7e6b9b0f5d829128d4305f8/ACM%20Research%20Poster%20-%20VR.png)
 ## Repository Structure
 
-### Data
+## Introduction
+Streaming a 4k virtual reality (VR) video requires about 600 Mbit/s internet speed connection. The average user does not have access to these speeds. Our proposed solution was to adaptively render each frame of a VR video based on where users are looking. This would ideally reduce file size while having no impact on a user's experience.
 
-Experiment data from Dr. Prakash and his team
+### Hypothesis
+If we discard areas from the frame that are not seen by the user and compress remaining areas based on relative values of importance, viewers will notice a negligible loss of quality of experience while significantly reducing file size.
 
-  - `VideosData`: Videos (both user traces visualization and source videos)
-      - `Videos`: Actual VR Videos
-          - `Source`: Source videos
-          - `SourceFrames`: Frames for each video
-      - `Visualized`: User traces videos
-          - `Traces`: Tracing user viewports on black background
-          - `TracesOnVideo`: Tracing user viewports on video background
-  - `UserTracesByVideo`: User traces data for each video
-  - `Misc`: Miscellaneous scripts/questionnaires that might be helpful
+## Timeline
 
-### 20F
-
-Key components/visualizations from [Fall 2020 ACM Research](https://github.com/ACM-Research/vr-viewport-analysis)
-
-- `demo`: Various images that might help in understanding the data as well as the research topic
-- `scripts`: Useful scripts for visualizing overlays, image processing, as well as video to frames conversion
+![VR User behavior Analysis](https://user-images.githubusercontent.com/74789903/116830391-57f00780-ab6f-11eb-93ef-208f1c7357b6.png)
