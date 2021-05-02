@@ -111,17 +111,17 @@ def main():
     sb.set_theme()
     plt.ylim(0, 1)
 
-    func = 'semiCrcl'
+    func = 'linear'
     videoId = 23
     videoType = 'compress'
 
     converter = VRConverter(videoId=videoId, rows=50, cols=100, heatThreshold=.20)
     
     videoName = f'{videoType}{func}{videoId}'
-    TEST_FRAMES = [691]
-    converter.generateTestMaps(TEST_FRAMES, videoOverlay=True)
+    # TEST_FRAMES = [691]
+    # converter.generateTestMaps(TEST_FRAMES, videoOverlay=True)
     # converter.makeVideo(videoType, f'{videoName}.avi', func)
-    # userExpPerFrame, userExpPerUser, storagePerFrame  = converter.getStats(func)
+    userExpPerFrame, userExpPerUser, storagePerFrame  = converter.getStats(func)
     # genHeatMap = pd.read_csv('D:\\Projects\\vr-user-behavior-analysis\\21S\\scripts\\691.csv')
     # genHeatMap = genHeatMap.drop(genHeatMap.columns[0], axis=1)
     # heatmapArray = genHeatMap.to_numpy()
@@ -130,7 +130,7 @@ def main():
     # # for frame in userExpPerFrame:
     # #     print(f'{frame}: {userExpPerFrame[frame] * 100}%')
 
-    # values = list(userExpPerFrame.values())
+    # values = list(storagePerFrame.values())
     # avg = np.average(values)
     # print(f'Average User Experience: {avg}')
 
