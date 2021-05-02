@@ -1,6 +1,8 @@
 # vr-user-behavior-analysis
 Exploring user behavior in Virtual Reality through heat map visualization and behavior classification
+
 Research Poster: [Link](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/main/ACM%20Research%20Poster%20-%20VR.pdf)
+
 ![Poster picture](https://github.com/ACM-Research/vr-user-behavior-analysis/blob/5c57497fe9c28c91c7e6b9b0f5d829128d4305f8/ACM%20Research%20Poster%20-%20VR.png)
 ## Repository Structure
 
