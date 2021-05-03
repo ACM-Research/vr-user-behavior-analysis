@@ -20,7 +20,7 @@ If we discard areas from the frame that are not seen by the user and compress re
 
 We began our research by developing heatmaps. At first, we did this by splitting frames into square regions and assigning heat values based on the centers of viewports. The heatmaps created this way were simple. However, they did not accurately define how attention is distributed throughout the frame in a continuous sense.
 
-![GridBasedHeatmap](https://user-images.githubusercontent.com/26316298/116832616-444a9e00-ab7b-11eb-850b-591410c8d3ea.jpg)
+![GridBasedHeatmap](https://user-images.githubusercontent.com/26316298/116834158-672c8080-ab82-11eb-9677-c6fa6de3558a.jpg)
 
 This issue was fixed with gradient heatmaps. These heatmaps were developed by stacking viewport ellipses of varying heat for each user's center of vision. Each user's focus decays outward from the center, as it is not possible to focus on multiple areas at the same instant.
 
@@ -59,7 +59,7 @@ For example, the heatmap
 
 is translated to the resolution map
 
-![ResolutionMap](https://user-images.githubusercontent.com/26316298/116831869-9b4e7400-ab77-11eb-8a2a-d7a9648d544f.PNG)
+![ResolutionMap](https://user-images.githubusercontent.com/26316298/116834163-70b5e880-ab82-11eb-9bcd-8f779c413a45.png)
 
 ### Compressed Videos
 
@@ -72,20 +72,22 @@ We defined the storage statistic as the ratio of the compressed image’s size a
 We found that, in the case of video 23 with the linear voting function, we could achieve a storage statistic of 32.5% while keeping the user experience rating at 78.6%. The semicircle voting function achieved an even lower storage statistic of 31.0% but sacrificed a significant amount of user experience (new user experience of 60.3%) to do so. 
 
 #### Storage vs User Experience per Frame (Linear Voting Function, Video 23)
-![compresslinear23PerFrameStats](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/working/compresslinear23PerFrameStats.gif)
+![compresslinear23PerFrameStats](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/main/compresslinear23PerFrameStats.gif)
 
 #### Storage vs User Experience per Frame (Semicircle Voting Function, Video 23)
-![image](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/working/compresssemiCrcl23PerFrameStats.gif)
+![image](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/main/compresssemiCrcl23PerFrameStats.gif)
 
 ### Machine Learning
 
 The methods used in this project rely on having a large amount of viewport data. Because this may not be the case in many applications, we tested the feasibility of using machine learning models to predict where users are looking based on a smaller amount of data.
 
 Our current [Kaggle](https://www.kaggle.com/rishivilla/vr-user-analysis-model) model predicted the simplified heatmap
-![Predicted](https://user-images.githubusercontent.com/26316298/116832276-f2eddf00-ab79-11eb-8249-6c80a18bf583.png)
+
+![Predicted (3)](https://user-images.githubusercontent.com/26316298/116834174-7e6b6e00-ab82-11eb-880c-9bec0cc45bbd.png)
 
 when the actual simplified heatmap for the frame in question was
-![Actual](https://user-images.githubusercontent.com/26316298/116832280-f7b29300-ab79-11eb-9ed3-527ca6c91f14.png)
+
+![Actual (2)](https://user-images.githubusercontent.com/26316298/116834176-83c8b880-ab82-11eb-8510-b2e82ddece51.png)
 
 Although the model is not perfect, it serves as a strong proof-of-concept for the use of machine learning to compensate for a lack of large user datasets.
 
@@ -107,4 +109,6 @@ There are a number of ways to further this research.
 * Rishi Villa 
 * Sunny Guan - Team Supervisor
 * Dr. Ravi Prakash - Research Advisor
+
+
 
