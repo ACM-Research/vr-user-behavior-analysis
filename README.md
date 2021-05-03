@@ -69,7 +69,7 @@ Using resolution maps, we can compress video frames. Frames are split into sever
 
 We defined the storage statistic as the ratio of the compressed image’s size as compared to the original. Taking the central 80% of a user’s viewport as “important”, we similarly defined the “user experience rating” as the percentage that “important” area that is rendered in full resolution. 
 
-We found that, in the case of video 23 with the linear voting function, we could achieve a storage statistic of 32.5% while keeping the user experience rating at 78.6%. The semicircle voting function achieved an even lower storage statistic of (blank) but sacrificed a significant amount of user experience (blank) to do so. 
+We found that, in the case of video 23 with the linear voting function, we could achieve a storage statistic of 32.5% while keeping the user experience rating at 78.6%. The semicircle voting function achieved an even lower storage statistic of 31.0% but sacrificed a significant amount of user experience (new user experience of 60.3%) to do so. 
 
 #### Storage vs User Experience per Frame (Linear Voting Function, Video 23)
 ![compresslinear23PerFrameStats](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/working/compresslinear23PerFrameStats.gif)
