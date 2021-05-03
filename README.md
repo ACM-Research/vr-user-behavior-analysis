@@ -4,7 +4,6 @@
 Research Poster: [Link](https://raw.githubusercontent.com/ACM-Research/vr-user-behavior-analysis/main/ACM%20Research%20Poster%20-%20VR.pdf)
 
 ![Poster picture](https://github.com/ACM-Research/vr-user-behavior-analysis/blob/5c57497fe9c28c91c7e6b9b0f5d829128d4305f8/ACM%20Research%20Poster%20-%20VR.png)
-## Repository Structure
 
 ## Introduction
 Streaming a 4k virtual reality (VR) video requires about 600 Mbit/s internet speed connection. The average user does not have access to these speeds. Our proposed solution was to adaptively render each frame of a VR video based on where users are looking. This would ideally reduce file size while having no impact on a user's experience.
